@@ -10,6 +10,7 @@
 ## Project Structure
 
 - `backend/` — Node.js/Express server (TypeScript, ESM)
+- `backend-swift/` — Swift/Vapor unfaird backend for jailbroken iPhone deployment
 - `frontend/` — React SPA (TypeScript, Vite, Tailwind CSS)
 - `e2e/` — Playwright E2E tests (pnpm)
 - `references/ApplePackage/` — Swift reference implementation (source of truth)
@@ -123,6 +124,15 @@ The backend proxies the bag endpoint via `GET /api/bag?guid=<deviceId>` using No
 - `tsx` for development, `tsc` for production build
 - SINF injector also handles optional `iTunesMetadata.plist` injection at IPA root
 - Bag proxy for `init.itunes.apple.com`
+
+### Swift Backend
+
+- `backend-swift/` is the production jailbroken iPhone backend.
+- It embeds AssppWeb API routes, Wisp proxy, static frontend serving, and unfaird IPA processing into one Swift/Vapor launchd service.
+- Package ID is `wiki.qaq.unfaird`; launchd label is `wiki.qaq.unfaird`; default port is `8080`.
+- `backend-swift/Package.swift` depends on sibling `../../unfair` when built from this repository.
+- Root `make build` is the single production packaging entry: it builds the frontend, builds the Swift iOS backend, and emits the rootless deb.
+- Root `make install` depends on `make build` and installs the generated deb on `DEVICE_HOST`.
 
 ### Backend Shared Utilities
 

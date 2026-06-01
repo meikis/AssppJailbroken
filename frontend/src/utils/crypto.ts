@@ -10,7 +10,7 @@ async function getPasswordKey(password: string): Promise<CryptoKey> {
   const enc = new TextEncoder();
   return await crypto.subtle.importKey(
     "raw",
-    enc.encode(password),
+    bytesToArrayBuffer(enc.encode(password)),
     { name: "PBKDF2" },
     false,
     ["deriveBits", "deriveKey"],
@@ -27,7 +27,7 @@ async function deriveKey(
   return await crypto.subtle.deriveKey(
     {
       name: "PBKDF2",
-      salt: salt,
+      salt: bytesToArrayBuffer(salt),
       iterations: ITERATIONS,
       hash: "SHA-256",
     },
@@ -56,9 +56,9 @@ export async function encryptData(
   const aesKey = await deriveKey(passwordKey, salt);
 
   const encryptedContent = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv: iv },
+    { name: "AES-GCM", iv: bytesToArrayBuffer(iv) },
     aesKey,
-    encodedData,
+    bytesToArrayBuffer(encodedData),
   );
 
   const encryptedBytes = new Uint8Array(encryptedContent);
@@ -101,9 +101,9 @@ export async function decryptData(
     const aesKey = await deriveKey(passwordKey, salt);
 
     const decryptedContent = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: iv },
+      { name: "AES-GCM", iv: bytesToArrayBuffer(iv) },
       aesKey,
-      encryptedBytes,
+      bytesToArrayBuffer(encryptedBytes),
     );
 
     const dec = new TextDecoder();
@@ -112,4 +112,10 @@ export async function decryptData(
   } catch (e) {
     throw new Error("Decryption failed. Incorrect password or corrupted data.");
   }
+}
+
+function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const buffer = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(buffer).set(bytes);
+  return buffer;
 }

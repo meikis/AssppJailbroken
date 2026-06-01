@@ -3,11 +3,18 @@ import { Link, NavLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import PageContainer from "../Layout/PageContainer";
 import { useAccountsStore } from "../../store/accounts";
+import { useSettingsStore } from "../../store/settings";
 import { storeIdToCountry } from "../../apple/config";
+import {
+  getAccountDisplayEmail,
+  getAccountDisplayName,
+  getAccountRouteSegment,
+} from "../../utils/accountDisplay";
 
 export default function AccountList() {
   const { t } = useTranslation();
   const { accounts, loading, loadAccounts } = useAccountsStore();
+  const demoMode = useSettingsStore((s) => s.demoMode);
 
   useEffect(() => {
     loadAccounts();
@@ -75,14 +82,14 @@ export default function AccountList() {
         </div>
       ) : (
         <div className="space-y-2">
-          {accounts.map((account) => {
+          {accounts.map((account, index) => {
             const countryCode =
               storeIdToCountry(account.store) || account.store;
 
             return (
               <NavLink
                 key={account.email}
-                to={`/accounts/${encodeURIComponent(account.email)}`}
+                to={`/accounts/${getAccountRouteSegment(account, demoMode, index)}`}
                 className={({ isActive }) =>
                   `block bg-white dark:bg-gray-900 rounded-lg border p-4 transition-colors ${
                     isActive
@@ -94,10 +101,10 @@ export default function AccountList() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-gray-900 dark:text-white">
-                      {account.firstName} {account.lastName}
+                      {getAccountDisplayName(account, t, demoMode, index)}
                     </p>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {account.email}
+                      {getAccountDisplayEmail(account, t, demoMode)}
                     </p>
                   </div>
                   <div className="text-sm text-gray-400 dark:text-gray-500">

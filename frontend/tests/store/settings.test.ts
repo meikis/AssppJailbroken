@@ -8,6 +8,7 @@ describe("store/settings", () => {
     useSettingsStore.setState({
       defaultCountry: "US",
       defaultEntity: "iPhone",
+      demoMode: false,
     });
   });
 
@@ -29,5 +30,15 @@ describe("store/settings", () => {
   it("should update default entity", () => {
     useSettingsStore.getState().setDefaultEntity("iPad");
     expect(useSettingsStore.getState().defaultEntity).toBe("iPad");
+  });
+
+  it("should have demo mode disabled by default", () => {
+    const state = useSettingsStore.getState();
+    expect(state.demoMode).toBe(false);
+  });
+
+  it("should update demo mode", () => {
+    useSettingsStore.getState().setDemoMode(true);
+    expect(useSettingsStore.getState().demoMode).toBe(true);
   });
 });

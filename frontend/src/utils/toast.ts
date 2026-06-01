@@ -1,5 +1,10 @@
 import type { TFunction } from "i18next";
 import { storeIdToCountry } from "../apple/config";
+import { useSettingsStore } from "../store/settings";
+import {
+  getAccountDisplayEmail,
+  getAccountDisplayName,
+} from "./accountDisplay";
 import type { Account } from "../types";
 
 export interface AccountContext {
@@ -19,8 +24,9 @@ export function getAccountContext(
   if (!account) {
     return { userName: "Unknown", appleId: "Unknown", country: "Unknown" };
   }
-  const userName = `${account.firstName} ${account.lastName}`;
-  const appleId = account.email;
+  const demoMode = useSettingsStore.getState().demoMode;
+  const userName = getAccountDisplayName(account, t, demoMode);
+  const appleId = getAccountDisplayEmail(account, t, demoMode);
   const rawCountryCode = storeIdToCountry(account.store) || "";
   const country = rawCountryCode
     ? t(`countries.${rawCountryCode}`, rawCountryCode)

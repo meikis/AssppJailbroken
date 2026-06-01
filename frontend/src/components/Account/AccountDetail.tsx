@@ -4,9 +4,17 @@ import { useTranslation } from "react-i18next";
 import PageContainer from "../Layout/PageContainer";
 import Spinner from "../common/Spinner";
 import { useAccounts } from "../../hooks/useAccounts";
+import { useSettingsStore } from "../../store/settings";
 import { useToastStore } from "../../store/toast";
 import { authenticate, AuthenticationError } from "../../apple/authenticate";
 import { storeIdToCountry } from "../../apple/config";
+import {
+  findAccountIndexByRouteSegment,
+  getAccountDisplayAppleId,
+  getAccountDisplayEmail,
+  getAccountDisplayName,
+  getAccountRouteSegment,
+} from "../../utils/accountDisplay";
 import { getErrorMessage } from "../../utils/error";
 
 export default function AccountDetail() {
@@ -20,6 +28,7 @@ export default function AccountDetail() {
     updateAccount,
     removeAccount,
   } = useAccounts();
+  const demoMode = useSettingsStore((s) => s.demoMode);
   const addToast = useToastStore((s) => s.addToast);
 
   const [showDelete, setShowDelete] = useState(false);
@@ -31,8 +40,20 @@ export default function AccountDetail() {
     loadAccounts();
   }, [loadAccounts]);
 
-  const decodedEmail = email ? decodeURIComponent(email) : "";
-  const account = accounts.find((a) => a.email === decodedEmail);
+  const routeSegment = email ? decodeURIComponent(email) : "";
+  const accountIndex = findAccountIndexByRouteSegment(
+    accounts,
+    routeSegment,
+  );
+  const account = accountIndex >= 0 ? accounts[accountIndex] : undefined;
+
+  useEffect(() => {
+    if (!demoMode || accountIndex < 0 || !account) return;
+    const demoRouteSegment = getAccountRouteSegment(account, true, accountIndex);
+    if (routeSegment !== demoRouteSegment) {
+      navigate(`/accounts/${demoRouteSegment}`, { replace: true });
+    }
+  }, [account, accountIndex, demoMode, navigate, routeSegment]);
 
   if (storeLoading) {
     return (
@@ -108,15 +129,15 @@ export default function AccountDetail() {
           <dl className="space-y-4">
             <DetailRow
               label={t("accounts.detail.name")}
-              value={`${account.firstName} ${account.lastName}`}
+              value={getAccountDisplayName(account, t, demoMode, accountIndex)}
             />
             <DetailRow
               label={t("accounts.detail.email")}
-              value={account.email}
+              value={getAccountDisplayEmail(account, t, demoMode)}
             />
             <DetailRow
               label={t("accounts.detail.appleId")}
-              value={account.appleId || account.email}
+              value={getAccountDisplayAppleId(account, t, demoMode)}
             />
             <DetailRow
               label={t("accounts.detail.storeRegion")}

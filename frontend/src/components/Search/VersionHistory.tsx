@@ -5,17 +5,20 @@ import PageContainer from "../Layout/PageContainer";
 import AppIcon from "../common/AppIcon";
 import { useAccounts } from "../../hooks/useAccounts";
 import { useDownloadAction } from "../../hooks/useDownloadAction";
+import { useSettingsStore } from "../../store/settings";
+import { useToastStore } from "../../store/toast";
 import { listVersions } from "../../apple/versionFinder";
 import { storeIdToCountry } from "../../apple/config";
 import { getVersionMetadata } from "../../apple/versionLookup";
+import { getAccountOptionLabel } from "../../utils/accountDisplay";
 import { getErrorMessage } from "../../utils/error";
-import { useToastStore } from "../../store/toast";
 import type { Software, VersionMetadata } from "../../types";
 
 export default function VersionHistory() {
   const { appId } = useParams<{ appId: string }>();
   const location = useLocation();
   const { accounts, updateAccount } = useAccounts();
+  const demoMode = useSettingsStore((s) => s.demoMode);
   const { t } = useTranslation();
   const addToast = useToastStore((s) => s.addToast);
   const { startDownload, toastDownloadError } = useDownloadAction();
@@ -132,9 +135,9 @@ export default function VersionHistory() {
                   onChange={(e) => setSelectedAccount(e.target.value)}
                   className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-base text-gray-900 dark:text-white w-full focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
                 >
-                  {filteredAccounts.map((a) => (
+                  {filteredAccounts.map((a, index) => (
                     <option key={a.email} value={a.email}>
-                      {a.firstName} {a.lastName} ({a.email})
+                      {getAccountOptionLabel(a, t, demoMode, index)}
                     </option>
                   ))}
                 </select>

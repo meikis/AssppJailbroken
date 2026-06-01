@@ -166,6 +166,8 @@ export default function DownloadList() {
             "downloading",
             "pending",
             "paused",
+            "injecting",
+            "decrypting",
             "completed",
             "failed",
           ] as StatusFilter[]

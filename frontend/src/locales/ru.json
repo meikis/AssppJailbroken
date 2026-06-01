@@ -16,6 +16,11 @@
     "available": "Доступные регионы",
     "all": "Все регионы"
   },
+  "demo": {
+    "accountName": "Демо-аккаунт",
+    "accountNameWithNumber": "Демо-аккаунт {{number}}",
+    "hidden": "Скрыто"
+  },
   "nav": {
     "home": "Главная",
     "accounts": "Аккаунты",
@@ -159,7 +164,8 @@
       "paused": "На паузе",
       "completed": "Завершено",
       "failed": "Ошибка",
-      "injecting": "Внедрение"
+      "injecting": "Внедрение",
+      "decrypting": "Decrypting"
     },
     "item": {
       "viewPackage": "Просмотреть пакет"
@@ -219,6 +225,13 @@
       "title": "Язык",
       "label": "Язык интерфейса",
       "changed": "Язык успешно изменен"
+    },
+    "demo": {
+      "title": "Демо-режим",
+      "label": "Скрывать имена и email аккаунтов",
+      "description": "Данные аккаунтов в интерфейсе заменяются демо-метками.",
+      "enabled": "Демо-режим включен",
+      "disabled": "Демо-режим отключен"
     },
     "defaults": {
       "title": "По умолчанию",

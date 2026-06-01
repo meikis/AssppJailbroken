@@ -16,6 +16,11 @@
     "available": "Available Regions",
     "all": "All Regions"
   },
+  "demo": {
+    "accountName": "Demo Account",
+    "accountNameWithNumber": "Demo Account {{number}}",
+    "hidden": "Hidden"
+  },
   "nav": {
     "home": "Home",
     "accounts": "Accounts",
@@ -159,7 +164,8 @@
       "paused": "Paused",
       "completed": "Completed",
       "failed": "Failed",
-      "injecting": "Injecting"
+      "injecting": "Injecting",
+      "decrypting": "Decrypting"
     },
     "item": {
       "viewPackage": "View Package"
@@ -219,6 +225,13 @@
       "title": "Language",
       "label": "Display Language",
       "changed": "Language changed successfully"
+    },
+    "demo": {
+      "title": "Demo Mode",
+      "label": "Hide account names and emails",
+      "description": "Account identity is replaced with demo labels across the interface.",
+      "enabled": "Demo mode enabled",
+      "disabled": "Demo mode disabled"
     },
     "defaults": {
       "title": "Defaults",

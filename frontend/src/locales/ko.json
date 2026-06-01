@@ -16,6 +16,11 @@
     "available": "사용 가능한 국가 / 지역",
     "all": "모든 국가 / 지역"
   },
+  "demo": {
+    "accountName": "데모 계정",
+    "accountNameWithNumber": "데모 계정 {{number}}",
+    "hidden": "숨김"
+  },
   "nav": {
     "home": "홈",
     "accounts": "계정",
@@ -159,7 +164,8 @@
       "paused": "일시 정지됨",
       "completed": "완료됨",
       "failed": "실패함",
-      "injecting": "주입 중"
+      "injecting": "주입 중",
+      "decrypting": "Decrypting"
     },
     "item": {
       "viewPackage": "패키지 보기"
@@ -219,6 +225,13 @@
       "title": "언어",
       "label": "표시 언어",
       "changed": "언어가 성공적으로 변경되었습니다"
+    },
+    "demo": {
+      "title": "데모 모드",
+      "label": "계정 이름과 이메일 숨기기",
+      "description": "화면의 계정 정보가 데모 라벨로 표시됩니다.",
+      "enabled": "데모 모드가 켜졌습니다",
+      "disabled": "데모 모드가 꺼졌습니다"
     },
     "defaults": {
       "title": "기본값",

@@ -10,12 +10,14 @@ import Modal from "../common/Modal";
 import { useDownloads } from "../../hooks/useDownloads";
 import { useAccounts } from "../../hooks/useAccounts";
 import { useDownloadAction } from "../../hooks/useDownloadAction";
+import { useSettingsStore } from "../../store/settings";
 import { useToastStore } from "../../store/toast";
 import { getInstallInfo } from "../../api/install";
 import { authHeaders } from "../../api/client";
 import { lookupApp } from "../../api/search";
 import { storeIdToCountry } from "../../apple/config";
 import { listVersions } from "../../apple/versionFinder";
+import { getAccountOptionLabel } from "../../utils/accountDisplay";
 import { getAccountContext } from "../../utils/toast";
 import { isNewerVersion } from "../../utils/version";
 import type { Software } from "../../types";
@@ -28,6 +30,7 @@ export default function PackageDetail() {
   const { t } = useTranslation();
   const addToast = useToastStore((s) => s.addToast);
   const { accounts } = useAccounts();
+  const demoMode = useSettingsStore((s) => s.demoMode);
   const { startDownload } = useDownloadAction();
 
   const [checkingUpdate, setCheckingUpdate] = useState(false);
@@ -48,15 +51,25 @@ export default function PackageDetail() {
     );
   }
 
-  const isActive = task.status === "downloading" || task.status === "injecting";
+  const isActive =
+    task.status === "downloading" ||
+    task.status === "injecting" ||
+    task.status === "decrypting";
+  const canPause = task.status === "downloading";
   const isPaused = task.status === "paused";
   const isCompleted = task.status === "completed";
   const installInfo = isCompleted ? getInstallInfo(task.id) : null;
 
   const accountEmail = hashToEmail[task.accountHash];
-  const account = accounts.find((a) => a.email === accountEmail);
+  const accountIndex = accounts.findIndex((a) => a.email === accountEmail);
+  const account = accountIndex >= 0 ? accounts[accountIndex] : undefined;
   const ctx = getAccountContext(account, t);
   const appName = task.software.name;
+  const accountLabel = account
+    ? getAccountOptionLabel(account, t, demoMode, accountIndex)
+    : demoMode
+      ? t("demo.hidden")
+      : accountEmail || task.accountHash;
 
   function toastAction(titleKey: string, type: "success" | "info" = "info") {
     addToast(t("toast.msg", { appName, ...ctx }), type, t(titleKey));
@@ -215,7 +228,7 @@ export default function PackageDetail() {
                 {t("downloads.package.account")}
               </dt>
               <dd className="text-gray-900 dark:text-gray-200 min-w-0 truncate ml-4">
-                {accountEmail || task.accountHash}
+                {accountLabel}
               </dd>
             </div>
             <div className="flex justify-between">
@@ -303,7 +316,7 @@ export default function PackageDetail() {
                 </button>
               </>
             )}
-            {isActive && (
+            {canPause && (
               <button
                 onClick={() => pauseDownload(task.id)}
                 className="px-4 py-2 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"

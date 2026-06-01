@@ -97,6 +97,7 @@ bower_components
 build/
 build/Release
 coverage
+debs/
 default.profraw
 dist
 dockerbuild

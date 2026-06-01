@@ -8,7 +8,10 @@ export async function fetchDownloads(
   const params = new URLSearchParams({
     accountHashes: accountHashes.join(","),
   });
-  return apiGet<DownloadTask[]>(`/api/downloads?${params}`);
+  const downloads = await apiGet<unknown>(`/api/downloads?${params}`);
+  if (downloads === null) return [];
+  if (!Array.isArray(downloads)) throw new Error("Invalid downloads response");
+  return downloads as DownloadTask[];
 }
 
 export async function startDownload(data: {

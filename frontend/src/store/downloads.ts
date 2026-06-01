@@ -39,12 +39,13 @@ export const useDownloadsStore = create<DownloadsState>((set, get) => ({
         (t) =>
           t.status === "downloading" ||
           t.status === "pending" ||
-          t.status === "injecting",
+          t.status === "injecting" ||
+          t.status === "decrypting",
       );
       if (hasActive && !pollInterval) {
         pollInterval = setInterval(() => {
           get().fetchTasks();
-        }, 2000);
+        }, 1000);
       } else if (!hasActive && pollInterval) {
         clearInterval(pollInterval);
         pollInterval = null;

@@ -16,6 +16,11 @@
     "available": "利用可能な国 / 地域",
     "all": "すべての国 / 地域"
   },
+  "demo": {
+    "accountName": "デモアカウント",
+    "accountNameWithNumber": "デモアカウント {{number}}",
+    "hidden": "非表示"
+  },
   "nav": {
     "home": "ホーム",
     "accounts": "アカウント",
@@ -159,7 +164,8 @@
       "paused": "一時停止",
       "completed": "完了",
       "failed": "失敗",
-      "injecting": "注入中"
+      "injecting": "注入中",
+      "decrypting": "Decrypting"
     },
     "item": {
       "viewPackage": "パッケージを表示"
@@ -219,6 +225,13 @@
       "title": "言語",
       "label": "表示言語",
       "changed": "言語を切り替えました"
+    },
+    "demo": {
+      "title": "デモモード",
+      "label": "アカウント名とメールを非表示",
+      "description": "画面上のアカウント情報をデモ用ラベルに置き換えます。",
+      "enabled": "デモモードを有効にしました",
+      "disabled": "デモモードを無効にしました"
     },
     "defaults": {
       "title": "デフォルト設定",

@@ -5,14 +5,17 @@ import PageContainer from "../Layout/PageContainer";
 import AppIcon from "../common/AppIcon";
 import { useAccounts } from "../../hooks/useAccounts";
 import { useDownloadAction } from "../../hooks/useDownloadAction";
+import { useSettingsStore } from "../../store/settings";
 import { lookupApp } from "../../api/search";
 import { storeIdToCountry } from "../../apple/config";
+import { getAccountOptionLabel } from "../../utils/accountDisplay";
 import type { Software } from "../../types";
 
 export default function ProductDetail() {
   const { appId } = useParams<{ appId: string }>();
   const location = useLocation();
   const { accounts } = useAccounts();
+  const demoMode = useSettingsStore((s) => s.demoMode);
   const { t } = useTranslation();
   const {
     startDownload,
@@ -147,9 +150,9 @@ export default function ProductDetail() {
                 className="rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-base text-gray-900 dark:text-white w-full focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
                 disabled={loadingAction !== null}
               >
-                {filteredAccounts.map((a) => (
+                {filteredAccounts.map((a, index) => (
                   <option key={a.email} value={a.email}>
-                    {a.firstName} {a.lastName} ({a.email})
+                    {getAccountOptionLabel(a, t, demoMode, index)}
                   </option>
                 ))}
               </select>

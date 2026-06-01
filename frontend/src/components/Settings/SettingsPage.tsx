@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import PageContainer from "../Layout/PageContainer";
 import Modal from "../common/Modal";
 import { useAccountsStore } from "../../store/accounts";
+import { useSettingsStore } from "../../store/settings";
 import { useToastStore } from "../../store/toast";
 import { apiGet } from "../../api/client";
 import { encryptData, decryptData } from "../../utils/crypto";
@@ -31,6 +32,8 @@ const entityTypes = [
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
   const { accounts, addAccount, updateAccount } = useAccountsStore();
+  const demoMode = useSettingsStore((s) => s.demoMode);
+  const setDemoMode = useSettingsStore((s) => s.setDemoMode);
   const addToast = useToastStore((s) => s.addToast);
 
   const [country, setCountry] = useState(
@@ -172,6 +175,14 @@ export default function SettingsPage() {
     addToast(t("settings.data.importSuccess"), "success");
   };
 
+  const handleDemoModeChange = (enabled: boolean) => {
+    setDemoMode(enabled);
+    addToast(
+      t(enabled ? "settings.demo.enabled" : "settings.demo.disabled"),
+      "success",
+    );
+  };
+
   return (
     <PageContainer title={t("settings.title")}>
       <div className="space-y-6">
@@ -206,6 +217,33 @@ export default function SettingsPage() {
               </select>
             </div>
           </div>
+        </section>
+
+        <section className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            {t("settings.demo.title")}
+          </h2>
+          <label
+            htmlFor="demo-mode"
+            className="flex items-center justify-between gap-4 cursor-pointer"
+          >
+            <div>
+              <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                {t("settings.demo.label")}
+              </span>
+              <span className="block text-sm text-gray-500 dark:text-gray-400 mt-1">
+                {t("settings.demo.description")}
+              </span>
+            </div>
+            <input
+              id="demo-mode"
+              type="checkbox"
+              checked={demoMode}
+              onChange={(e) => handleDemoModeChange(e.target.checked)}
+              className="sr-only peer"
+            />
+            <span className="relative inline-flex h-6 w-11 shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 transition-colors peer-checked:bg-blue-600 after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-5" />
+          </label>
         </section>
 
         <section className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">

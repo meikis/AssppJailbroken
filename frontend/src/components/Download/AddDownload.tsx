@@ -10,13 +10,14 @@ import { useToastStore } from "../../store/toast";
 import { lookupApp } from "../../api/search";
 import { listVersions } from "../../apple/versionFinder";
 import { countryCodeMap, storeIdToCountry } from "../../apple/config";
+import { getAccountOptionLabel } from "../../utils/accountDisplay";
 import { firstAccountCountry } from "../../utils/account";
 import { getErrorMessage } from "../../utils/error";
 import type { Software } from "../../types";
 
 export default function AddDownload() {
   const { accounts, updateAccount } = useAccounts();
-  const { defaultCountry } = useSettingsStore();
+  const { defaultCountry, demoMode } = useSettingsStore();
   const { t } = useTranslation();
   const addToast = useToastStore((s) => s.addToast);
   const {
@@ -187,9 +188,9 @@ export default function AddDownload() {
               disabled={isLoading || filteredAccounts.length === 0}
             >
               {filteredAccounts.length > 0 ? (
-                filteredAccounts.map((a) => (
+                filteredAccounts.map((a, index) => (
                   <option key={a.email} value={a.email}>
-                    {a.firstName} {a.lastName} ({a.email})
+                    {getAccountOptionLabel(a, t, demoMode, index)}
                   </option>
                 ))
               ) : (

@@ -70,6 +70,7 @@ export interface DownloadTask {
     | "downloading"
     | "paused"
     | "injecting"
+    | "decrypting"
     | "completed"
     | "failed";
   progress: number;

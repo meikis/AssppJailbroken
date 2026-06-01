@@ -20,7 +20,11 @@ export default function DownloadItem({
 }: DownloadItemProps) {
   const { t } = useTranslation();
 
-  const isActive = task.status === "downloading" || task.status === "injecting";
+  const isActive =
+    task.status === "downloading" ||
+    task.status === "injecting" ||
+    task.status === "decrypting";
+  const canPause = task.status === "downloading";
   const isPaused = task.status === "paused";
   const isCompleted = task.status === "completed";
 
@@ -70,7 +74,7 @@ export default function DownloadItem({
 
           {/* Redesigned action buttons with borders, padding, rounded corners, and shadow */}
           <div className="flex flex-wrap gap-2 mt-3">
-            {isActive && (
+            {canPause && (
               <button
                 onClick={() => onPause(task.id)}
                 className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition-colors"

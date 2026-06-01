@@ -95,6 +95,22 @@ AssppWeb relies on the Wisp protocol over WebSocket (`/wisp/`) for its zero-trus
 
 </details>
 
+### Jailbroken iPhone Backend
+
+The jailbroken iPhone backend lives in `backend-swift/`. It embeds the AssppWeb API, Wisp proxy, static frontend serving, and local `unfaird` IPA processing in one Swift/Vapor launchd service.
+
+Build the complete rootless deb package:
+
+```bash
+make build
+```
+
+Install the same package on a device:
+
+```bash
+make install DEVICE_HOST=root@192.168.2.122
+```
+
 ## Security Recommendations
 
 **DDoS Protection**

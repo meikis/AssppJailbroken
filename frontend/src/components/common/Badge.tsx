@@ -6,6 +6,7 @@ interface BadgeProps {
     | "downloading"
     | "paused"
     | "injecting"
+    | "decrypting"
     | "completed"
     | "failed";
 }
@@ -18,6 +19,8 @@ const styles: Record<BadgeProps["status"], string> = {
     "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400",
   injecting:
     "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400",
+  decrypting:
+    "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400",
   completed:
     "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400",
   failed: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400",

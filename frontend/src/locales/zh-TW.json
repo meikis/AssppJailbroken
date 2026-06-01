@@ -16,6 +16,11 @@
     "available": "可用國家 / 地區",
     "all": "所有國家 / 地區"
   },
+  "demo": {
+    "accountName": "示範帳號",
+    "accountNameWithNumber": "示範帳號 {{number}}",
+    "hidden": "已隱藏"
+  },
   "nav": {
     "home": "首頁",
     "accounts": "帳號",
@@ -159,7 +164,8 @@
       "paused": "已暫停",
       "completed": "已完成",
       "failed": "已失敗",
-      "injecting": "注入中"
+      "injecting": "注入中",
+      "decrypting": "Decrypting"
     },
     "item": {
       "viewPackage": "查看安裝包"
@@ -219,6 +225,13 @@
       "title": "語言",
       "label": "顯示語言",
       "changed": "語言切換成功"
+    },
+    "demo": {
+      "title": "示範模式",
+      "label": "隱藏帳號姓名和電子郵件",
+      "description": "介面中的帳號身分資訊會替換為示範標籤。",
+      "enabled": "示範模式已開啟",
+      "disabled": "示範模式已關閉"
     },
     "defaults": {
       "title": "預設設定",

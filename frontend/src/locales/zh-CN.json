@@ -16,6 +16,11 @@
     "available": "可用国家 / 地区",
     "all": "所有国家 / 地区"
   },
+  "demo": {
+    "accountName": "演示账号",
+    "accountNameWithNumber": "演示账号 {{number}}",
+    "hidden": "已隐藏"
+  },
   "nav": {
     "home": "首页",
     "accounts": "账号",
@@ -159,7 +164,8 @@
       "paused": "已暂停",
       "completed": "已完成",
       "failed": "已失败",
-      "injecting": "注入中"
+      "injecting": "注入中",
+      "decrypting": "Decrypting"
     },
     "item": {
       "viewPackage": "查看安装包"
@@ -219,6 +225,13 @@
       "title": "语言",
       "label": "显示语言",
       "changed": "语言切换成功"
+    },
+    "demo": {
+      "title": "演示模式",
+      "label": "隐藏账号姓名和邮箱",
+      "description": "界面中的账号身份信息会替换为演示标签。",
+      "enabled": "演示模式已开启",
+      "disabled": "演示模式已关闭"
     },
     "defaults": {
       "title": "默认设置",
