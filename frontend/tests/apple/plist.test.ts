@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { buildPlist, parsePlist } from "../../src/apple/plist";
 
 describe("apple/plist", () => {
@@ -67,6 +67,27 @@ describe("apple/plist", () => {
 
       expect(parsed.email).toBe("test@test.com");
       expect(parsed.value).toBe("hello world");
+    });
+
+    it("should log the raw response when the root element is not plist", () => {
+      const xml = "<html><body>Apple returned HTML</body></html>";
+      const consoleError = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      expect(() => parsePlist(xml)).toThrow(
+        "Invalid plist: root element is not <plist>",
+      );
+      expect(consoleError).toHaveBeenCalledWith(
+        "Invalid plist response",
+        expect.objectContaining({
+          reason: "Root element is not <plist>",
+          rootName: "html",
+          xml,
+        }),
+      );
+
+      consoleError.mockRestore();
     });
   });
 });

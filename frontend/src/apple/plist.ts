@@ -47,14 +47,42 @@ function escapeXml(s: string): string {
 export function parsePlist(xml: string): any {
   const doc = new DOMParser().parseFromString(xml, "text/xml");
   const root = doc.documentElement;
+  const parserError =
+    root.nodeName === "parsererror" ? root.textContent || "" : null;
+  if (parserError) {
+    logInvalidPlist("XML parser error", xml, {
+      parserError,
+      rootName: root.nodeName,
+    });
+    throw new Error(`Invalid plist: ${parserError}`);
+  }
   if (root.nodeName !== "plist") {
+    logInvalidPlist("Root element is not <plist>", xml, {
+      rootName: root.nodeName,
+      rootText: root.textContent || "",
+    });
     throw new Error("Invalid plist: root element is not <plist>");
   }
   const firstChild = root.firstElementChild;
   if (!firstChild) {
+    logInvalidPlist("Empty <plist> element", xml, {
+      rootName: root.nodeName,
+    });
     throw new Error("Invalid plist: empty <plist> element");
   }
   return parseNode(firstChild);
+}
+
+function logInvalidPlist(
+  reason: string,
+  xml: string,
+  context: Record<string, string>,
+): void {
+  console.error("Invalid plist response", {
+    reason,
+    ...context,
+    xml,
+  });
 }
 
 function parseNode(node: Element): any {
