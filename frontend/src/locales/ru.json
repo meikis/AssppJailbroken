@@ -204,6 +204,7 @@
       "copied": "Ссылка скопирована в буфер обмена",
       "scan": "Отсканируйте для установки",
       "downloadIpa": "Скачать IPA",
+      "downloadSimulatorIpa": "Скачать IPA для симулятора",
       "pause": "Пауза",
       "resume": "Продолжить",
       "delete": "Удалить",
@@ -456,6 +457,7 @@
       "installStarted": "Начало установки",
       "shareAcquired": "Ссылка получена",
       "downloadIpaStarted": "Начало загрузки IPA",
+      "downloadSimulatorIpaStarted": "Начало загрузки IPA для симулятора",
       "deleteSuccess": "Успешное удаление",
       "downloadLimit": "Превышен лимит размера"
     },

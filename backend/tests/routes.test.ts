@@ -6,6 +6,7 @@ import settingsRoutes from "../src/routes/settings.js";
 import installRoutes from "../src/routes/install.js";
 import { getBaseUrl } from "../src/routes/install.js";
 import downloadRoutes from "../src/routes/downloads.js";
+import packageRoutes from "../src/routes/packages.js";
 
 function createApp() {
   const app = express();
@@ -13,6 +14,7 @@ function createApp() {
   app.use("/api", settingsRoutes);
   app.use("/api", installRoutes);
   app.use("/api", downloadRoutes);
+  app.use("/api", packageRoutes);
   return app;
 }
 
@@ -117,6 +119,25 @@ describe("Install Route", () => {
     const res = await request(app).get("/api/install/any-id/icon-large.png");
     expect(res.status).toBe(200);
     expect(res.headers["content-type"]).toContain("image/png");
+  });
+});
+
+describe("Packages Route", () => {
+  const app = createApp();
+
+  it("GET /api/packages/:id/simulator-file should return 400 without accountHash", async () => {
+    const res = await request(app).get(
+      "/api/packages/nonexistent-id/simulator-file",
+    );
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("accountHash");
+  });
+
+  it("GET /api/packages/:id/simulator-file should return 404 with valid accountHash", async () => {
+    const res = await request(app).get(
+      "/api/packages/nonexistent-id/simulator-file?accountHash=abcdef1234567890",
+    );
+    expect(res.status).toBe(404);
   });
 });
 

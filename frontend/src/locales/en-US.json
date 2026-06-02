@@ -204,6 +204,7 @@
       "copied": "Link copied to clipboard",
       "scan": "Scan to install",
       "downloadIpa": "Download IPA",
+      "downloadSimulatorIpa": "Download Simulator IPA",
       "pause": "Pause",
       "resume": "Resume",
       "delete": "Delete",
@@ -456,6 +457,7 @@
       "installStarted": "Installation Started",
       "shareAcquired": "Link Acquired",
       "downloadIpaStarted": "Downloading IPA",
+      "downloadSimulatorIpaStarted": "Downloading Simulator IPA",
       "deleteSuccess": "Delete Success",
       "downloadLimit": "Size Limit Exceeded"
     },

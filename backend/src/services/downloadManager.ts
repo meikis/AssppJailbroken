@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import { config, DOWNLOAD_TIMEOUT_MS } from "../config.js";
 import { inject } from "./sinfInjector.js";
 import { ChunkedDownloader } from "./chunkedDownloader.js";
+import { simulatorIpaPathFor } from "./simulatorIpaBuilder.js";
 import type { DownloadTask, Software, Sinf } from "../types/index.js";
 
 const tasks = new Map<string, DownloadTask>();
@@ -140,8 +141,16 @@ export function runSpaceCleanup() {
     ) {
       try {
         const stat = fs.statSync(task.filePath);
-        totalBytes += stat.size;
-        fileTasks.push({ id: task.id, size: stat.size, mtimeMs: stat.mtimeMs });
+        const simulatorPath = simulatorIpaPathFor(task.filePath);
+        let size = stat.size;
+        let mtimeMs = stat.mtimeMs;
+        if (fs.existsSync(simulatorPath)) {
+          const simulatorStat = fs.statSync(simulatorPath);
+          size += simulatorStat.size;
+          mtimeMs = Math.max(mtimeMs, simulatorStat.mtimeMs);
+        }
+        totalBytes += size;
+        fileTasks.push({ id: task.id, size, mtimeMs });
       } catch {
         // File inaccessible — skip
       }
@@ -238,6 +247,7 @@ function cleanOrphanedPackages() {
   for (const task of tasks.values()) {
     if (task.filePath) {
       knownPaths.add(path.resolve(task.filePath));
+      knownPaths.add(path.resolve(simulatorIpaPathFor(task.filePath)));
     }
   }
 
@@ -333,6 +343,14 @@ export function deleteTask(id: string): boolean {
       resolved.startsWith(packagesBase + path.sep) &&
       fs.existsSync(resolved)
     ) {
+      const simulatorPath = path.resolve(simulatorIpaPathFor(resolved));
+      if (
+        simulatorPath.startsWith(packagesBase + path.sep) &&
+        fs.existsSync(simulatorPath)
+      ) {
+        fs.unlinkSync(simulatorPath);
+      }
+
       fs.unlinkSync(resolved);
 
       // Clean up empty parent directories

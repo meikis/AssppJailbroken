@@ -204,6 +204,7 @@
       "copied": "링크가 클립보드에 복사되었습니다",
       "scan": "스캔하여 설치",
       "downloadIpa": "IPA 다운로드",
+      "downloadSimulatorIpa": "시뮬레이터 IPA 다운로드",
       "pause": "일시 정지",
       "resume": "재개",
       "delete": "삭제",
@@ -456,6 +457,7 @@
       "installStarted": "설치 시작",
       "shareAcquired": "링크 획득",
       "downloadIpaStarted": "IPA 다운로드 시작",
+      "downloadSimulatorIpaStarted": "시뮬레이터 IPA 다운로드 시작",
       "deleteSuccess": "삭제 성공",
       "downloadLimit": "크기 제한 초과"
     },

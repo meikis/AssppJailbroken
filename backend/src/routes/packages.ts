@@ -4,6 +4,10 @@ import path from "path";
 import { config } from "../config.js";
 import { MIN_ACCOUNT_HASH_LENGTH } from "../config.js";
 import { getAllTasks } from "../services/downloadManager.js";
+import {
+  ensureSimulatorIpa,
+  simulatorIpaPathFor,
+} from "../services/simulatorIpaBuilder.js";
 import { getIdParam } from "../utils/route.js";
 import type { PackageInfo } from "../types/index.js";
 
@@ -97,6 +101,73 @@ router.get("/packages/:id/file", (req: Request, res: Response) => {
   stream.pipe(res);
 });
 
+// Build and stream an IPA patched for iOS Simulator (requires accountHash)
+router.get(
+  "/packages/:id/simulator-file",
+  async (req: Request, res: Response) => {
+    const accountHash = req.query.accountHash as string;
+    if (!accountHash || accountHash.length < MIN_ACCOUNT_HASH_LENGTH) {
+      res.status(400).json({ error: "Missing or invalid accountHash" });
+      return;
+    }
+
+    const id = getIdParam(req);
+    const task = getAllTasks().find(
+      (t) => t.id === id && t.status === "completed",
+    );
+
+    if (!task || !task.filePath || !fs.existsSync(task.filePath)) {
+      res.status(404).json({ error: "Package not found" });
+      return;
+    }
+
+    if (task.accountHash !== accountHash) {
+      res.status(403).json({ error: "Access denied" });
+      return;
+    }
+
+    const packagesBase = path.resolve(path.join(config.dataDir, "packages"));
+    const resolvedPath = path.resolve(task.filePath);
+    if (!resolvedPath.startsWith(packagesBase + path.sep)) {
+      res.status(403).json({ error: "Access denied" });
+      return;
+    }
+
+    try {
+      const simulatorPath = await ensureSimulatorIpa(resolvedPath);
+      const resolvedSimulatorPath = path.resolve(simulatorPath);
+      if (!resolvedSimulatorPath.startsWith(packagesBase + path.sep)) {
+        res.status(403).json({ error: "Access denied" });
+        return;
+      }
+
+      const safeName = sanitizeFilename(task.software.name);
+      const safeVersion = sanitizeFilename(task.software.version);
+      const fileName = `${safeName}_${safeVersion}_Simulator.ipa`;
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${fileName}"`,
+      );
+      res.setHeader("Content-Type", "application/octet-stream");
+
+      const stats = fs.statSync(resolvedSimulatorPath);
+      res.setHeader("Content-Length", stats.size);
+
+      const stream = fs.createReadStream(resolvedSimulatorPath);
+      stream.pipe(res);
+    } catch (err) {
+      console.error(
+        "Simulator IPA build error:",
+        err instanceof Error ? err.message : err,
+      );
+      res.status(500).json({
+        error:
+          err instanceof Error ? err.message : "Failed to build simulator IPA",
+      });
+    }
+  },
+);
+
 // Delete a package (requires accountHash)
 router.delete("/packages/:id", (req: Request, res: Response) => {
   const accountHash = req.query.accountHash as string;
@@ -128,6 +199,14 @@ router.delete("/packages/:id", (req: Request, res: Response) => {
   }
 
   if (fs.existsSync(resolvedPath)) {
+    const simulatorPath = path.resolve(simulatorIpaPathFor(resolvedPath));
+    if (
+      simulatorPath.startsWith(packagesBase + path.sep) &&
+      fs.existsSync(simulatorPath)
+    ) {
+      fs.unlinkSync(simulatorPath);
+    }
+
     fs.unlinkSync(resolvedPath);
 
     // Clean up empty parent directories

@@ -424,7 +424,12 @@ final class WebDownloadManager {
     }
 
     private func cleanOrphanedPackages() {
-        let known = Set(tasks.values.compactMap { $0.task.filePath }.map { URL(fileURLWithPath: $0).standardizedFileURL.path })
+        var known = Set<String>()
+        for filePath in tasks.values.compactMap({ $0.task.filePath }) {
+            let sourceURL = URL(fileURLWithPath: filePath).standardizedFileURL
+            known.insert(sourceURL.path)
+            known.insert(SimulatorIPABuilder.simulatorIpaURL(for: sourceURL).standardizedFileURL.path)
+        }
         guard let enumerator = FileManager.default.enumerator(at: packagesDirectory, includingPropertiesForKeys: [.isDirectoryKey]) else {
             return
         }
@@ -469,7 +474,17 @@ final class WebDownloadManager {
             else {
                 return nil
             }
-            return (task.id, size.int64Value, modificationDate)
+            let sourceURL = URL(fileURLWithPath: path)
+            let simulatorURL = SimulatorIPABuilder.simulatorIpaURL(for: sourceURL)
+            var totalSize = size.int64Value
+            var latestModificationDate = modificationDate
+            if let simulatorAttributes = try? FileManager.default.attributesOfItem(atPath: simulatorURL.path),
+               let simulatorSize = simulatorAttributes[.size] as? NSNumber,
+               let simulatorModificationDate = simulatorAttributes[.modificationDate] as? Date {
+                totalSize += simulatorSize.int64Value
+                latestModificationDate = max(latestModificationDate, simulatorModificationDate)
+            }
+            return (task.id, totalSize, latestModificationDate)
         }.sorted { $0.modificationDate < $1.modificationDate }
 
         var total = files.reduce(Int64(0)) { $0 + $1.size }
@@ -493,6 +508,10 @@ final class WebDownloadManager {
         let base = packagesDirectory.resolvingSymlinksInPath().standardizedFileURL
         guard resolved.path.hasPrefix(base.path + "/") else {
             return
+        }
+        let simulatorURL = SimulatorIPABuilder.simulatorIpaURL(for: resolved).standardizedFileURL
+        if simulatorURL.path.hasPrefix(base.path + "/") {
+            try? FileManager.default.removeItem(at: simulatorURL)
         }
         try? FileManager.default.removeItem(at: resolved)
     }

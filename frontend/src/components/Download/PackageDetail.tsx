@@ -18,9 +18,22 @@ import { lookupApp } from "../../api/search";
 import { storeIdToCountry } from "../../apple/config";
 import { listVersions } from "../../apple/versionFinder";
 import { getAccountOptionLabel } from "../../utils/accountDisplay";
+import { getErrorMessage } from "../../utils/error";
 import { getAccountContext } from "../../utils/toast";
 import { isNewerVersion } from "../../utils/version";
 import type { Software } from "../../types";
+
+async function responseErrorMessage(res: Response): Promise<string> {
+  const text = await res.text();
+  if (!text) return "Download failed";
+  try {
+    const parsed = JSON.parse(text) as { error?: unknown };
+    if (typeof parsed.error === "string") return parsed.error;
+  } catch {
+    return text;
+  }
+  return text;
+}
 
 export default function PackageDetail() {
   const { id } = useParams<{ id: string }>();
@@ -38,6 +51,9 @@ export default function PackageDetail() {
   const [latestApp, setLatestApp] = useState<Software | null>(null);
   const [availableVersions, setAvailableVersions] = useState<string[]>([]);
   const [selectedVersion, setSelectedVersion] = useState<string>("");
+  const [downloadAction, setDownloadAction] = useState<
+    "device" | "simulator" | null
+  >(null);
 
   const task = tasks.find((t) => t.id === id);
 
@@ -51,6 +67,7 @@ export default function PackageDetail() {
     );
   }
 
+  const packageTask = task;
   const isActive =
     task.status === "downloading" ||
     task.status === "injecting" ||
@@ -163,6 +180,41 @@ export default function PackageDetail() {
       navigate("/downloads");
     } catch {
       addToast(t("downloads.package.updateFailed"), "error");
+    }
+  }
+
+  async function handleDownloadIpa(target: "device" | "simulator") {
+    const endpoint = target === "simulator" ? "simulator-file" : "file";
+    const fileSuffix = target === "simulator" ? "_Simulator" : "";
+    const titleKey =
+      target === "simulator"
+        ? "toast.title.downloadSimulatorIpaStarted"
+        : "toast.title.downloadIpaStarted";
+
+    setDownloadAction(target);
+    toastAction(titleKey);
+    try {
+      const res = await fetch(
+        `/api/packages/${packageTask.id}/${endpoint}?accountHash=${encodeURIComponent(packageTask.accountHash)}`,
+        { headers: authHeaders() },
+      );
+      if (!res.ok) throw new Error(await responseErrorMessage(res));
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${packageTask.software.name}_${packageTask.software.version}${fileSuffix}.ipa`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      addToast(
+        getErrorMessage(error, t("downloads.package.downloadFailed")),
+        "error",
+      );
+    } finally {
+      setDownloadAction(null);
     }
   }
 
@@ -289,30 +341,18 @@ export default function PackageDetail() {
                   </>
                 )}
                 <button
-                  onClick={async () => {
-                    toastAction("toast.title.downloadIpaStarted");
-                    try {
-                      const res = await fetch(
-                        `/api/packages/${task.id}/file?accountHash=${encodeURIComponent(task.accountHash)}`,
-                        { headers: authHeaders() },
-                      );
-                      if (!res.ok) throw new Error("Download failed");
-                      const blob = await res.blob();
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement("a");
-                      a.href = url;
-                      a.download = `${task.software.name}_${task.software.version}.ipa`;
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                      URL.revokeObjectURL(url);
-                    } catch {
-                      addToast(t("downloads.package.downloadFailed"), "error");
-                    }
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                  onClick={() => handleDownloadIpa("device")}
+                  disabled={downloadAction !== null}
+                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
                   {t("downloads.package.downloadIpa")}
+                </button>
+                <button
+                  onClick={() => handleDownloadIpa("simulator")}
+                  disabled={downloadAction !== null}
+                  className="px-4 py-2 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                >
+                  {t("downloads.package.downloadSimulatorIpa")}
                 </button>
               </>
             )}

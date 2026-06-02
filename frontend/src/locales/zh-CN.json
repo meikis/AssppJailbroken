@@ -204,6 +204,7 @@
       "copied": "链接已复制到剪贴板",
       "scan": "扫码安装",
       "downloadIpa": "下载 IPA",
+      "downloadSimulatorIpa": "下载模拟器用 IPA",
       "pause": "暂停",
       "resume": "恢复",
       "delete": "删除",
@@ -456,6 +457,7 @@
       "installStarted": "开始安装",
       "shareAcquired": "链接已获取",
       "downloadIpaStarted": "开始下载 IPA",
+      "downloadSimulatorIpaStarted": "开始下载模拟器 IPA",
       "deleteSuccess": "删除成功",
       "downloadLimit": "文件大小超限"
     },

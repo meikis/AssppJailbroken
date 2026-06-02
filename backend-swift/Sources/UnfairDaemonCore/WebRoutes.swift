@@ -174,6 +174,24 @@ private func registerPackageRoutes(_ app: Application, config: WebConfig, manage
         return response
     }
 
+    app.get("api", "packages", ":id", "simulator-file") { req -> Response in
+        try requireAccess(req, config: config)
+        let task = try completedPackage(req, manager: manager)
+        guard let filePath = task.filePath else {
+            throw Abort(.notFound, reason: "Package not found")
+        }
+        let simulatorURL = try SimulatorIPABuilder.ensureSimulatorIpa(sourceURL: URL(fileURLWithPath: filePath))
+        guard pathInPackages(simulatorURL.path, manager: manager) else {
+            throw Abort(.forbidden, reason: "Access denied")
+        }
+        let name = sanitizeFilename(task.software.name)
+        let version = sanitizeFilename(task.software.version)
+        let response = req.fileio.streamFile(at: simulatorURL.path)
+        response.headers.replaceOrAdd(name: "Content-Disposition", value: "attachment; filename=\"\(name)_\(version)_Simulator.ipa\"")
+        response.headers.replaceOrAdd(name: "Content-Type", value: "application/octet-stream")
+        return response
+    }
+
     app.delete("api", "packages", ":id") { req -> Response in
         try requireAccess(req, config: config)
         let task = try completedPackage(req, manager: manager)
