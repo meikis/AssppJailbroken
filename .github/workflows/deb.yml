@@ -22,6 +22,8 @@ env:
   THEOS_PACKAGE_SCHEME: rootless
   UNFAIR_REPOSITORY: lbr77/unfair
   UNFAIR_REF: main
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
 
 jobs:
   build:
@@ -63,11 +65,14 @@ jobs:
         run: |
           set -euo pipefail
           brew list dpkg >/dev/null 2>&1 || brew install dpkg
+          brew list ldid >/dev/null 2>&1 || brew install ldid
           if [[ -f "$THEOS/makefiles/common.mk" && -x "$THEOS/bin/ldid" ]]; then
             exit 0
           fi
           rm -rf "$THEOS"
-          bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
+          git clone --recursive --depth 1 https://github.com/theos/theos.git "$THEOS"
+          mkdir -p "$THEOS/bin"
+          ln -sf "$(command -v ldid)" "$THEOS/bin/ldid"
           test -f "$THEOS/makefiles/common.mk"
           test -x "$THEOS/bin/ldid"
 
