@@ -17,10 +17,6 @@ struct PosixSpawnResult {
 }
 
 enum PosixSpawn {
-    #if os(iOS)
-    private static let spawnWorkingDirectoryLock = NSLock()
-    #endif
-
     static func run(
         executablePath: String,
         arguments: [String],
@@ -92,15 +88,10 @@ enum PosixSpawn {
         attributes: inout posix_spawnattr_t?,
         argv: inout [UnsafeMutablePointer<CChar>?]
     ) throws {
-        spawnWorkingDirectoryLock.lock()
-        defer { spawnWorkingDirectoryLock.unlock() }
-
-        let originalDirectory = FileManager.default.currentDirectoryPath
-        try throwIfFailed(chdir(workingDirectory.path), operation: "chdir")
-        let spawnStatus = posix_spawn(&pid, executablePath, &actions, &attributes, &argv, nil)
-        let restoreStatus = chdir(originalDirectory)
-        try throwIfFailed(restoreStatus, operation: "restore working directory")
-        try throwIfFailed(spawnStatus, operation: "posix_spawn \(executablePath)")
+        try ProcessWorkingDirectory.withCurrentDirectory(workingDirectory) {
+            let spawnStatus = posix_spawn(&pid, executablePath, &actions, &attributes, &argv, nil)
+            try throwIfFailed(spawnStatus, operation: "posix_spawn \(executablePath)")
+        }
     }
     #endif
 

@@ -1,6 +1,6 @@
 # Jailbroken iPhone Package
 
-The production jailbroken iPhone package is built from `backend-swift/` as `wiki.qaq.unfaird`. It serves the built React frontend, exposes the same `/api/*` surface used by the web app, handles Wisp TCP proxying, downloads Apple CDN IPAs on the server, injects SINF and metadata, decrypts the IPA locally through unfaird, and serves completed IPA files back to the frontend.
+The production jailbroken iPhone package is built from `backend-swift/` as `wiki.qaq.unfaird`. It serves the built React frontend, exposes the `/api/*` surface used by the web app and local HTTP clients, runs Apple protocol requests on the Swift backend, downloads Apple CDN IPAs, injects SINF and metadata, decrypts the IPA locally through unfaird, and serves completed IPA files back to the frontend.
 
 It intentionally does not install IPAs locally. The completed decrypted package remains in `DATA_DIR/packages`, and the frontend downloads it through `/api/packages/{id}/file`.
 
@@ -15,6 +15,20 @@ GET queue.download_url
 ```
 
 The AssppWeb download API calls this local decrypt path directly inside the same launchd service.
+
+## Apple Protocol Flow
+
+The frontend calls Swift API routes for Apple operations:
+
+```text
+POST /api/apple/authenticate
+POST /api/apple/purchase
+POST /api/apple/versions
+POST /api/apple/version-metadata
+POST /api/downloads/apple
+```
+
+`backend-swift` resolves the bag endpoint, authenticates with the per-account device identifier, records storefront and pod, merges Apple cookies, acquires licenses, resolves CDN download info, creates the download task, injects metadata, and runs local decryption.
 
 ## Build
 
@@ -32,7 +46,7 @@ make build
 Install the generated package on a jailbroken iPhone:
 
 ```bash
-make install DEVICE_HOST=root@192.168.2.122
+make install DEVICE_HOST=root@<device-host>
 ```
 
 ## Runtime Layout

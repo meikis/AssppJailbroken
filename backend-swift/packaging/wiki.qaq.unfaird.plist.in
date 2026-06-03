@@ -22,7 +22,7 @@
     <key>JetsamProperties</key>
     <dict>
         <key>JetsamMemoryLimit</key>
-        <integer>524288</integer>
+        <integer>512</integer>
         <key>JetsamPriority</key>
         <integer>-49</integer>
     </dict>

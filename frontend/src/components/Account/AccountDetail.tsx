@@ -6,8 +6,7 @@ import Spinner from "../common/Spinner";
 import { useAccounts } from "../../hooks/useAccounts";
 import { useSettingsStore } from "../../store/settings";
 import { useToastStore } from "../../store/toast";
-import { authenticate, AuthenticationError } from "../../apple/authenticate";
-import { storeIdToCountry } from "../../apple/config";
+import { authenticate, AuthenticationError } from "../../api/apple";
 import {
   findAccountIndexByRouteSegment,
   getAccountDisplayAppleId,
@@ -16,6 +15,7 @@ import {
   getAccountRouteSegment,
 } from "../../utils/accountDisplay";
 import { getErrorMessage } from "../../utils/error";
+import { storeIdToCountry } from "../../apple/config";
 
 export default function AccountDetail() {
   const { email } = useParams<{ email: string }>();
@@ -58,7 +58,7 @@ export default function AccountDetail() {
   if (storeLoading) {
     return (
       <PageContainer title={t("accounts.title")}>
-        <div className="text-center text-gray-500 py-12">{t("loading")}</div>
+        <div className="py-12 text-center text-muted">{t("loading")}</div>
       </PageContainer>
     );
   }
@@ -67,10 +67,10 @@ export default function AccountDetail() {
     return (
       <PageContainer title={t("accounts.title")}>
         <div className="text-center py-12">
-          <p className="text-gray-500 mb-4">{t("accounts.detail.notFound")}</p>
+          <p className="mb-4 text-muted">{t("accounts.detail.notFound")}</p>
           <button
             onClick={() => navigate("/accounts")}
-            className="text-blue-600 hover:text-blue-700 font-medium"
+            className="text-link"
           >
             {t("accounts.detail.back")}
           </button>
@@ -125,7 +125,7 @@ export default function AccountDetail() {
   return (
     <PageContainer title={t("accounts.detail.title")}>
       <div className="max-w-lg space-y-6">
-        <section className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+        <section className="card card-pad">
           <dl className="space-y-4">
             <DetailRow
               label={t("accounts.detail.name")}
@@ -158,10 +158,10 @@ export default function AccountDetail() {
         </section>
 
         {needsCode && (
-          <section className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+          <section className="card card-pad">
             <label
               htmlFor="reauth-code"
-              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              className="field-label"
             >
               {t("accounts.detail.code")}
             </label>
@@ -176,13 +176,13 @@ export default function AccountDetail() {
                 onChange={(e) => setReauthCode(e.target.value)}
                 disabled={reauthing}
                 placeholder="000000"
-                className="block flex-1 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-base text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 dark:disabled:bg-gray-800/50 transition-colors"
+                className="field-input flex-1"
                 autoFocus
               />
               <button
                 onClick={handleReauth}
                 disabled={reauthing || !reauthCode}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
+                className="btn btn-primary"
               >
                 {reauthing && <Spinner />}
                 {t("accounts.detail.verify")}
@@ -195,7 +195,7 @@ export default function AccountDetail() {
           <button
             onClick={handleReauth}
             disabled={reauthing}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="btn btn-primary"
           >
             {reauthing && <Spinner />}
             {t("accounts.detail.reauth")}
@@ -204,24 +204,24 @@ export default function AccountDetail() {
           {!showDelete ? (
             <button
               onClick={() => setShowDelete(true)}
-              className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+              className="btn btn-danger"
             >
               {t("accounts.detail.delete")}
             </button>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
+              <span className="text-sm text-muted">
                 {t("accounts.detail.areYouSure")}
               </span>
               <button
                 onClick={handleDelete}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+                className="btn btn-danger"
               >
                 {t("accounts.detail.confirmDelete")}
               </button>
               <button
                 onClick={() => setShowDelete(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                className="btn btn-ghost"
               >
                 {t("accounts.detail.cancel")}
               </button>
@@ -231,7 +231,7 @@ export default function AccountDetail() {
 
         <button
           onClick={() => navigate("/accounts")}
-          className="px-4 py-2 mt-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors inline-block"
+          className="btn btn-ghost mt-2"
         >
           {t("accounts.detail.back")}
         </button>
@@ -243,10 +243,10 @@ export default function AccountDetail() {
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+      <dt className="detail-label">
         {label}
       </dt>
-      <dd className="mt-0.5 text-sm text-gray-900 dark:text-white break-all">
+      <dd className="detail-value">
         {value || "--"}
       </dd>
     </div>

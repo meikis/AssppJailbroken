@@ -9,54 +9,47 @@
 
 ## Project Structure
 
-- `backend/` — Node.js/Express server (TypeScript, ESM)
-- `backend-swift/` — Swift/Vapor unfaird backend for jailbroken iPhone deployment
+- `backend/` — Node.js/Express backend for Docker-era API compatibility
+- `backend-swift/` — production Swift/Vapor backend for personal jailbroken iPhone deployment
 - `frontend/` — React SPA (TypeScript, Vite, Tailwind CSS)
 - `e2e/` — Playwright E2E tests (pnpm)
 - `references/ApplePackage/` — Swift reference implementation (source of truth)
 - Multi-stage Docker build (single container serves both)
 
-## Architecture — Zero-Trust
-
-The server is a blind TCP proxy. It NEVER sees Apple credentials.
+## Architecture — Personal Backend
 
 ```
-┌─ Browser (Client) ─────────────────────────────────┐
-│  Credentials (IndexedDB): email, password, cookies, │
-│    passwordToken, DSID, deviceIdentifier, pod       │
-│                                                      │
-│  Apple Protocol (libcurl.js WASM + Mbed TLS 1.3):   │
-│    1. Bag fetch → backend proxy → resolve auth URL   │
-│       (fallback to default auth endpoint if missing)  │
-│    2. Authenticate → get token, cookies, pod         │
-│    3. Purchase → acquire license                     │
-│    4. Download info → get CDN URL + SINFs + metadata │
-│    5. Version listing/lookup                         │
-│                                                      │
-│  TLS 1.3 encrypted via Wisp protocol over WebSocket  │
-└──────────────────────┬───────────────────────────────┘
-                       │ Wisp-multiplexed TCP (server cannot read)
-┌─ Server (Wisp Proxy) ┴──────────────────────────────┐
-│  Wisp server (@mercuryworkshop/wisp-js) on /wisp/    │
-│  → multiplexed TCP relay (blind tunnel, no decrypt)  │
-│                                                      │
-│  Bag proxy: GET /api/bag?guid=<id>                   │
-│    - Fetches init.itunes.apple.com/bag.xml via HTTPS │
-│    - Returns public Apple service URLs (no creds)    │
-│                                                      │
-│  After client obtains download info:                 │
-│    Client POSTs: { downloadURL, sinfs, metadata }    │
-│    - downloadURL = Apple CDN (public, no auth)       │
-│    - sinfs = DRM signatures (base64)                 │
-│    - iTunesMetadata = app metadata plist (base64)    │
-│                                                      │
-│  Server downloads IPA from CDN, injects SINFs +      │
-│  iTunesMetadata, stores compiled IPA, serves via     │
-│  public install URL (itms-services manifest)         │
+┌─ Browser (Client) ─────────────────────────────────────┐
+│  Account management UI                                 │
+│  Credentials in IndexedDB: email, password, cookies,   │
+│    passwordToken, DSID, deviceIdentifier, pod          │
+│                                                        │
+│  Calls backend-swift APIs:                             │
+│    POST /api/apple/authenticate                        │
+│    POST /api/apple/purchase                            │
+│    POST /api/apple/versions                            │
+│    POST /api/apple/version-metadata                    │
+│    POST /api/downloads/apple                           │
+└──────────────────────┬─────────────────────────────────┘
+                       │ Authenticated local HTTP API
+┌─ backend-swift ──────┴─────────────────────────────────┐
+│  Apple protocol client (AsyncHTTPClient HTTP/1.1):      │
+│    1. Bag fetch → resolve authenticateAccount URL       │
+│       with default auth endpoint when bag omits it      │
+│    2. Authenticate → token, cookies, store front, pod   │
+│    3. Purchase → acquire license                       │
+│    4. Download info → CDN URL + SINFs + metadata        │
+│    5. Version listing/lookup                            │
+│                                                        │
+│  IPA pipeline:                                          │
+│    - Download IPA from Apple CDN                        │
+│    - Inject SINFs and iTunesMetadata.plist              │
+│    - Decrypt locally through unfaird                    │
+│    - Serve completed IPA and install manifest           │
 └──────────────────────────────────────────────────────┘
 ```
 
-**Key invariant**: The server NEVER sees Apple credentials. All Apple TLS terminates at the browser via libcurl.js WASM (Mbed TLS 1.3). The server only receives public CDN URLs and non-secret metadata for IPA compilation. The bag proxy (`/api/bag`) only returns public Apple service URLs — no credentials pass through it.
+**Key invariant**: `backend-swift` owns Apple protocol execution for personal self-hosted use. The browser manages account records and submits the selected account object to Swift APIs for Apple operations. Swift handles Apple TLS, cookie merging, pod routing, license acquisition, download info retrieval, IPA download, SINF injection, and local decryption in one process.
 
 ## Reference Implementation
 
@@ -98,28 +91,21 @@ After authentication, Apple returns a `pod` header:
 - Store API: `p{pod}-buy.itunes.apple.com` (default: `p25-buy.itunes.apple.com`)
 - Purchase API: `p{pod}-buy.itunes.apple.com` (default: `buy.itunes.apple.com`)
 - Pod is stored on the Account object and used for all subsequent API calls
-- Functions: `storeAPIHost(pod?)` and `purchaseAPIHost(pod?)` in `frontend/src/apple/config.ts`
+- Host selection lives in `backend-swift/Sources/UnfairDaemonCore/AppleProtocolService.swift`
 
-## Dynamic Host Validation (Backend)
+## Apple Protocol Backend
 
-The Wisp server validates target hosts via `hostname_whitelist` in `backend/src/services/wsProxy.ts`:
+`backend-swift/Sources/UnfairDaemonCore/AppleProtocolService.swift` mirrors the necessary ApplePackage flows:
 
-- `auth.itunes.apple.com` — bag-resolved auth endpoint
-- `buy.itunes.apple.com` — purchase endpoint
-- `init.itunes.apple.com` — bag endpoint
-- `/^p\d+-buy\.itunes\.apple\.com$/` — pod-based hosts
-- Port restricted to `443` only
-- Direct IP targets blocked (`allow_direct_ip = false`)
-- Loopback IP targets blocked (`allow_loopback_ips = false`)
-- Private/reserved resolved IPs allowed (`allow_private_ips = true`) for Docker/OrbStack DNS translation while hostname allowlist remains the primary control
-
-## Bag Proxy (Backend)
-
-The backend proxies the bag endpoint via `GET /api/bag?guid=<deviceId>` using Node.js native HTTPS. It sends Configurator-compatible request headers (`User-Agent`, `Accept: application/xml`). The bag response is public data (Apple service URLs) — no credentials are involved. See `backend/src/routes/bag.ts`.
+- `authenticate` fetches the bag, sets the `guid` query once, follows Apple auth redirects, detects 2FA, stores storefront and pod.
+- `purchase` sends `buyProduct`, uses `STDQ`, retries with `GAME` for failure `2059`, and returns updated cookies.
+- `downloadInfo` sends `volumeStoreDownloadProduct`, returns CDN URL, base64 SINFs, bundle versions, and binary iTunes metadata.
+- `listVersions` and `versionMetadata` use the same Apple download-product response shape as ApplePackage.
+- AsyncHTTPClient is configured for HTTP/1.1 and manual redirects for Apple protocol requests.
 
 ## Backend
 
-- Express + `@mercuryworkshop/wisp-js` for HTTP and Wisp proxy
+- Express backend for Docker-era API compatibility
 - ESM modules (`"type": "module"` in package.json)
 - `tsx` for development, `tsc` for production build
 - SINF injector also handles optional `iTunesMetadata.plist` injection at IPA root
@@ -128,7 +114,7 @@ The backend proxies the bag endpoint via `GET /api/bag?guid=<deviceId>` using No
 ### Swift Backend
 
 - `backend-swift/` is the production jailbroken iPhone backend.
-- It embeds AssppWeb API routes, Wisp proxy, static frontend serving, and unfaird IPA processing into one Swift/Vapor launchd service.
+- It embeds AssppWeb API routes, Apple protocol execution, static frontend serving, and unfaird IPA processing into one Swift/Vapor launchd service.
 - Package ID is `wiki.qaq.unfaird`; launchd label is `wiki.qaq.unfaird`; default port is `8080`.
 - `backend-swift/Package.swift` depends on sibling `../../unfair` when built from this repository.
 - Root `make build` is the single production packaging entry: it builds the frontend, builds the Swift iOS backend, and emits the rootless deb.
@@ -145,12 +131,9 @@ The backend proxies the bag endpoint via `GET /api/bag?guid=<deviceId>` using No
 - Tailwind CSS 4 for styling
 - Vite for build tooling
 - IndexedDB for credential storage (via `idb`)
-- `libcurl.js` (WASM) for browser-side TLS 1.3 via Mbed TLS — connects through Wisp protocol
-- `appleRequest()` in `frontend/src/apple/request.ts` wraps `libcurl.fetch` for all Apple API calls and forces HTTP/1.1 (`_libcurl_http_version: 1.1`)
-- Bag endpoint (`frontend/src/apple/bag.ts`) uses backend proxy (`/api/bag`) and falls back to `https://buy.itunes.apple.com/WebObjects/MZFinance.woa/wa/authenticate` when `authenticateAccount` is missing or bag fetch fails
-- Authentication (`frontend/src/apple/authenticate.ts`) resolves bag endpoint, then sets `guid` via URL query manipulation to avoid duplicate/malformed query parameters
-- Plist build/parse (`frontend/src/apple/plist.ts`) uses native XML builder and browser-native `DOMParser`
-- Cookie helper (`frontend/src/apple/cookies.ts`) — `extractAndMergeCookies(rawHeaders, existingCookies)` replaces the repeated extract-and-merge pattern across all Apple protocol files
+- `frontend/src/api/apple.ts` wraps Swift Apple protocol APIs for auth, purchase, backend download creation, version listing, and version metadata.
+- `frontend/src/api/client.ts` preserves structured API error payloads through `ApiError`.
+- `frontend/src/apple/config.ts` keeps storefront constants and per-account device ID generation.
 
 ### Frontend Shared Components (`components/common/`)
 
@@ -176,7 +159,7 @@ The backend proxies the bag endpoint via `GET /api/bag?guid=<deviceId>` using No
 3. Common components (`AppIcon`, `Alert`, `Spinner`, `Modal`, `CountrySelect`)
 4. Sibling components within the same feature folder (e.g., `DownloadItem` inside `Download/`)
 5. Hooks / stores (`useAccounts`, `useSettingsStore`)
-6. Apple protocol / API modules (`authenticate`, `purchaseApp`, `apiPost`)
+6. Apple API modules (`authenticate`, `purchaseApp`, `apiPost`)
 7. Utilities (`accountHash`, `getErrorMessage`)
 8. Config (`countryCodeMap`, `storeIdToCountry`)
 9. Types (`type Software`)
@@ -191,16 +174,16 @@ The backend proxies the bag endpoint via `GET /api/bag?guid=<deviceId>` using No
 
 ### Account Hash Is Public
 
-`accountHash` is a SHA-256 of the account email. It is treated as **public, non-secret data** — it identifies which account owns a download but does not grant any privileged access. No authentication is bound to it. This is by design: the server is a blind proxy and does not manage user sessions.
+`accountHash` is a SHA-256 of the account email. It is treated as a local owner label for downloads and packages. Access control comes from the optional `ACCESS_PASSWORD` gate and the browser's selected account set.
 
 ### Trusted Sources
 
 - **Apple API responses** (bag XML, iTunes search results, `customerMessage` fields) are treated as trusted content. No additional sanitization is applied beyond what React's text rendering provides (no `dangerouslySetInnerHTML`).
 - **Apple CDN redirects** during IPA download are trusted. The initial URL is validated against `*.apple.com`, and redirect targets from Apple's CDN infrastructure (e.g., Akamai) are followed. The response body is saved to disk — it is never reflected back to the requester.
 
-### Browser as Security Boundary
+### Personal Browser and Backend Boundary
 
-Credentials (passwords, `passwordToken`, cookies) stored in IndexedDB are protected by the browser's same-origin policy. Encrypting them at rest would be security theater — the decryption key would also live in JS. The threat model assumes the browser environment is trusted; if an attacker has XSS, they can exfiltrate credentials regardless of at-rest encryption.
+Credentials (passwords, `passwordToken`, cookies) are stored in IndexedDB for local account management. When the user authenticates, purchases, lists versions, or starts a download, the frontend sends the selected account object to `backend-swift`, and the Swift process performs the Apple network operation.
 
 ### Backend Does Not Reflect Request Headers
 
@@ -233,23 +216,18 @@ cd frontend && npx vitest run   # jsdom environment with fake-indexeddb
 ```bash
 cd e2e && pnpm test                            # Local (requires Docker on port 8080)
 docker compose --profile test run --rm playwright  # Docker-based
-bash e2e/docker-test.sh                        # Full: build + test + zero-trust verify
+bash e2e/docker-test.sh                        # Full Docker build + test flow
 ```
 
 E2E tests import from `./fixtures` instead of `@playwright/test`.
 
-WebSocket proxy tests use `location.host` to derive URLs dynamically, so they work both locally (`localhost:8080`) and in Docker (`asspp:8080`).
-
-Real-account Docker verification (2026-02-22): authentication succeeds through Wisp, and backend logs contain only connection/stream metadata (no Apple credentials, password tokens, or cookies).
-
 E2E tests cover:
 
-- Wisp proxy (accepts /wisp/ WebSocket, rejects non-wisp paths)
 - Add account flow (device ID field, randomize button, auth)
 - Account detail (device ID, pod display)
 - Settings page (no global device ID section)
 - Search/lookup by bundle ID (verifies iTunes field mapping)
-- Downloads API (iTunesMetadata support, backward compatibility)
+- Downloads API (backend Apple protocol execution, iTunesMetadata support, package lifecycle)
 
 ### Test Account
 
@@ -273,7 +251,7 @@ docker compose --profile test run --rm playwright
 
 This runs Playwright inside the official `mcr.microsoft.com/playwright` image, connecting to the app container via Docker internal DNS (`http://asspp:8080`). The `asspp` service has a healthcheck so the test container waits until the app is ready.
 
-The `e2e/docker-test.sh` script automates the full flow: build, test, and verify zero-trust by scanning backend logs for credential leaks.
+The `e2e/docker-test.sh` script automates the Docker build and Playwright test flow.
 
 ## Interface Design System
 

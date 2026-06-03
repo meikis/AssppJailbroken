@@ -4,6 +4,7 @@ import Vapor
 func webRoutes(_ app: Application, config: WebConfig, manager: WebDownloadManager) throws {
     registerAuthRoutes(app, config: config)
     registerSettingsRoutes(app, config: config)
+    registerAppleProtocolRoutes(app, config: config, manager: manager)
     registerAppleProxyRoutes(app, config: config)
     registerDownloadRoutes(app, config: config, manager: manager)
     registerPackageRoutes(app, config: config, manager: manager)
@@ -256,7 +257,7 @@ private func registerStaticRoutes(_ app: Application, config: WebConfig) {
 
 private func staticResponse(for req: Request, config: WebConfig) throws -> Response {
     let path = req.url.path
-    if path.hasPrefix("/api/") || path.hasPrefix("/wisp/") {
+    if path.hasPrefix("/api/") {
         throw Abort(.notFound)
     }
     if path.hasPrefix("/assets/") || (path as NSString).pathExtension.isEmpty == false {

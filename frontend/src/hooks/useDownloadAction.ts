@@ -2,11 +2,12 @@ import { useTranslation } from "react-i18next";
 import { useAccounts } from "./useAccounts";
 import { useToastStore } from "../store/toast";
 import { useDownloadsStore } from "../store/downloads";
-import { getDownloadInfo } from "../apple/download";
-import { purchaseApp } from "../apple/purchase";
-import { authenticate } from "../apple/authenticate";
-import { apiPost, apiGet } from "../api/client";
-import { accountHash } from "../utils/account";
+import {
+  authenticate,
+  purchaseApp,
+  startAppleDownload,
+} from "../api/apple";
+import { apiGet } from "../api/client";
 import { getErrorMessage } from "../utils/error";
 import { getAccountContext } from "../utils/toast";
 import type { Account, Software } from "../types";
@@ -50,21 +51,12 @@ export function useDownloadAction() {
       // Settings fetch failed — backend will still enforce the limit
     }
 
-    const { output, updatedCookies } = await getDownloadInfo(
+    const result = await startAppleDownload(
       account,
       app,
       versionId,
     );
-    await updateAccount({ ...account, cookies: updatedCookies });
-    const hash = await accountHash(account);
-
-    await apiPost("/api/downloads", {
-      software: { ...app, version: output.bundleShortVersionString },
-      accountHash: hash,
-      downloadURL: output.downloadURL,
-      sinfs: output.sinfs,
-      iTunesMetadata: output.iTunesMetadata,
-    });
+    await updateAccount(result.account);
 
     fetchTasks();
 
@@ -97,8 +89,8 @@ export function useDownloadAction() {
       // Ignore — proceed with existing token
     }
 
-    const result = await purchaseApp(currentAccount, app);
-    await updateAccount({ ...currentAccount, cookies: result.updatedCookies });
+    const purchasedAccount = await purchaseApp(currentAccount, app);
+    await updateAccount(purchasedAccount);
 
     addToast(
       t("toast.msg", { appName, ...ctx }),

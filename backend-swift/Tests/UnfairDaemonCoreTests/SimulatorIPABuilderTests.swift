@@ -35,6 +35,40 @@ final class SimulatorIPABuilderTests: XCTestCase {
         XCTAssertEqual(result.data.uint32LE(at: 68), 5678)
     }
 
+    func testPatchesMachOFileInPlace() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("asspp-simulator-test-\(UUID().uuidString)")
+        try minimalMachO64().write(to: url)
+        defer {
+            try? FileManager.default.removeItem(at: url)
+        }
+
+        XCTAssertTrue(try SimulatorIPABuilder.patchMachOFileForTesting(url))
+
+        let data = try Data(contentsOf: url)
+        XCTAssertEqual(data.uint32LE(at: 40), 7)
+        XCTAssertEqual(data.uint32LE(at: 44), 0x0010_0000)
+        XCTAssertEqual(data.uint32LE(at: 48), 0x0010_0000)
+    }
+
+    func testMigratesLegacyMachOFileInPlace() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("asspp-simulator-test-\(UUID().uuidString)")
+        try legacyVersionMinMachO64().write(to: url)
+        defer {
+            try? FileManager.default.removeItem(at: url)
+        }
+
+        XCTAssertTrue(try SimulatorIPABuilder.patchMachOFileForTesting(url))
+
+        let data = try Data(contentsOf: url)
+        XCTAssertEqual(data.uint32LE(at: 20), 40)
+        XCTAssertEqual(data.uint32LE(at: 32), 0x32)
+        XCTAssertEqual(data.uint32LE(at: 36), 24)
+        XCTAssertEqual(data.uint32LE(at: 40), 7)
+        XCTAssertEqual(data.uint32LE(at: 56), 0x1d)
+    }
+
     private func minimalMachO64() -> Data {
         var data = Data()
         data.appendUInt32LE(0xfeedfacf) // magic

@@ -11,19 +11,16 @@ interface BadgeProps {
     | "failed";
 }
 
-const styles: Record<BadgeProps["status"], string> = {
-  pending: "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300",
-  downloading:
-    "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
-  paused:
-    "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400",
-  injecting:
-    "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400",
-  decrypting:
-    "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400",
-  completed:
-    "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400",
-  failed: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400",
+type Tone = "default" | "success" | "accent" | "warning" | "danger";
+
+const tones: Record<BadgeProps["status"], Tone> = {
+  pending: "default",
+  downloading: "accent",
+  paused: "warning",
+  injecting: "accent",
+  decrypting: "accent",
+  completed: "success",
+  failed: "danger",
 };
 
 export default function Badge({ status }: BadgeProps) {
@@ -31,7 +28,8 @@ export default function Badge({ status }: BadgeProps) {
 
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${styles[status]}`}
+      className="chip"
+      data-tone={tones[status] === "default" ? undefined : tones[status]}
     >
       {/* Dynamic lookup matching the JSON structure "downloads.status.xxx" */}
       {t(`downloads.status.${status}`)}

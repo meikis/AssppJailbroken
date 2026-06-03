@@ -7,16 +7,19 @@ export default function MobileHeader() {
 
   return (
     <>
-      {/* Use fixed instead of sticky to prevent PWA overscroll gap, with safe-top / 使用 fixed 替代 sticky 防止 PWA 下拉出现空白缝隙，保留 safe-top */}
-      <header className="md:hidden fixed top-0 left-0 right-0 w-full bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-40 transition-colors duration-200 safe-top">
+      {/* Fixed positioning prevents a PWA overscroll gap while preserving safe-area padding. */}
+      <header className="md:hidden fixed top-0 left-0 right-0 w-full bg-bg border-b border-border z-40 safe-top">
         <div className="flex items-center justify-between px-4 h-14">
-          <h1 className="text-lg font-bold text-gray-900 dark:text-white">
+          <h1 className="flex items-center gap-2 text-[15px] font-semibold tracking-normal text-ink">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-ink text-[10px] font-bold text-on-ink">
+              A
+            </span>
             Asspp Web
           </h1>
           <ThemeToggle />
         </div>
       </header>
-      {/* Spacer to occupy the space of the fixed header in the document flow / 为 fixed 定位的顶栏提供占位，防止下方内容被遮挡 */}
+      {/* The spacer keeps page content below the fixed mobile header. */}
       <div className="md:hidden safe-top">
         <div className="h-14"></div>
       </div>
@@ -37,12 +40,12 @@ function ThemeToggle() {
   return (
     <button
       onClick={cycleTheme}
-      className="p-2 -mr-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+      className="btn btn-ghost btn-sm -mr-1 size-8 p-0"
       title={t(`theme.${theme}`)}
     >
-      {theme === "light" && <SunIcon className="w-5 h-5" />}
-      {theme === "dark" && <MoonIcon className="w-5 h-5" />}
-      {theme === "system" && <SystemIcon className="w-5 h-5" />}
+      {theme === "light" && <SunIcon className="w-4 h-4" />}
+      {theme === "dark" && <MoonIcon className="w-4 h-4" />}
+      {theme === "system" && <SystemIcon className="w-4 h-4" />}
     </button>
   );
 }

@@ -12,6 +12,5 @@ public func configure(_ app: Application, hostname: String = "127.0.0.1", port: 
     app.routes.defaultMaxBodySize = "8gb"
 
     try routes(app)
-    registerWispRoutes(app, config: webConfig)
     try webRoutes(app, config: webConfig, manager: downloadManager)
 }

@@ -7,6 +7,6 @@ Description: Local HTTP IPA decrypt daemon for iOS.
 Section: Utilities
 Maintainer: LiBr <me@nvme0n1p.dev>
 Author: LiBr <me@nvme0n1p.dev>
-Depends: firmware (>= 13.0), ldid
+Depends: firmware (>= 15.0), ldid
 Provides: wiki.qaq.assppweb
 Replaces: wiki.qaq.assppweb

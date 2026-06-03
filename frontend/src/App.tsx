@@ -27,7 +27,7 @@ const SettingsPage = lazy(() => import("./components/Settings/SettingsPage"));
 function Loading() {
   const { t } = useTranslation();
   return (
-    <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+    <div className="p-8 text-center text-muted">
       {t("loading")}
     </div>
   );
@@ -59,7 +59,7 @@ export default function App() {
 
   return (
     <PasswordGate>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex text-gray-900 dark:text-gray-100 transition-colors duration-200">
+      <div className="min-h-screen bg-bg flex text-ink">
         <ToastContainer />
         <GlobalDownloadNotifier />
 

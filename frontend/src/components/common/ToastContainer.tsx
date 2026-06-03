@@ -2,21 +2,21 @@ import type { ReactNode } from "react";
 import { useToastStore, type ToastType } from "../../store/toast";
 
 const iconBg: Record<ToastType, string> = {
-  success: "bg-green-50 dark:bg-green-900/20",
-  error: "bg-red-50 dark:bg-red-900/20",
-  info: "bg-blue-50 dark:bg-blue-900/20",
+  success: "bg-success-soft",
+  error: "bg-danger-soft",
+  info: "bg-accent-soft",
 };
 
 const titleColor: Record<ToastType, string> = {
-  success: "text-green-600 dark:text-green-400",
-  error: "text-red-600 dark:text-red-400",
-  info: "text-blue-600 dark:text-blue-400",
+  success: "text-success",
+  error: "text-danger",
+  info: "text-accent",
 };
 
 const icons: Record<ToastType, ReactNode> = {
   success: (
     <svg
-      className="w-6 h-6 text-green-500"
+      className="w-5 h-5 text-success"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
@@ -31,7 +31,7 @@ const icons: Record<ToastType, ReactNode> = {
   ),
   error: (
     <svg
-      className="w-6 h-6 text-red-500"
+      className="w-5 h-5 text-danger"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
@@ -46,7 +46,7 @@ const icons: Record<ToastType, ReactNode> = {
   ),
   info: (
     <svg
-      className="w-6 h-6 text-blue-500"
+      className="w-5 h-5 text-accent"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
@@ -89,10 +89,10 @@ export default function ToastContainer() {
             role={toast.type === "error" ? "alert" : "status"}
             aria-live={toast.type === "error" ? "assertive" : "polite"}
             aria-atomic="true"
-            className="pointer-events-auto flex w-[calc(100vw-2rem)] sm:w-auto sm:min-w-[320px] max-w-[calc(100vw-2rem)] sm:max-w-md overflow-hidden rounded-xl backdrop-blur-xl bg-white/85 dark:bg-gray-900/85 border border-gray-200/50 dark:border-gray-700/50 shadow-2xl animate-toast-in"
+            className="pointer-events-auto flex w-[calc(100vw-2rem)] sm:w-auto sm:min-w-[320px] max-w-[calc(100vw-2rem)] sm:max-w-md overflow-hidden rounded-[14px] backdrop-blur-xl bg-elevated/90 border border-border-strong shadow-[0_20px_50px_-24px_rgba(0,0,0,0.5)] animate-toast-in"
           >
             <div
-              className={`flex items-center justify-center w-14 flex-shrink-0 ${iconBg[toast.type]}`}
+              className={`flex items-center justify-center w-12 flex-shrink-0 ${iconBg[toast.type]}`}
             >
               {icons[toast.type]}
             </div>
@@ -100,13 +100,13 @@ export default function ToastContainer() {
             <div className="flex-1 min-w-0 py-3 px-4 flex flex-col justify-center">
               {toast.title && (
                 <h4
-                  className={`text-sm font-bold mb-1 ${titleColor[toast.type]}`}
+                  className={`text-[13px] font-semibold mb-1 ${titleColor[toast.type]}`}
                 >
                   {toast.title}
                 </h4>
               )}
               <p
-                className={`text-sm font-medium text-gray-800 dark:text-gray-200 whitespace-pre-line break-words ${toast.title ? "leading-relaxed" : ""}`}
+                className={`text-[13px] font-medium text-ink whitespace-pre-line break-words ${toast.title ? "leading-relaxed" : ""}`}
               >
                 {toast.message}
               </p>
@@ -115,7 +115,7 @@ export default function ToastContainer() {
             <div className="flex items-start pt-3 pr-3">
               <button
                 onClick={() => removeToast(toast.id)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"
+                className="text-subtle hover:text-ink transition-colors flex-shrink-0"
                 aria-label="Close notification"
               >
                 <svg

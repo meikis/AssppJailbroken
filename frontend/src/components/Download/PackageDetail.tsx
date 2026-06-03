@@ -14,13 +14,13 @@ import { useSettingsStore } from "../../store/settings";
 import { useToastStore } from "../../store/toast";
 import { getInstallInfo } from "../../api/install";
 import { authHeaders } from "../../api/client";
+import { listVersions } from "../../api/apple";
 import { lookupApp } from "../../api/search";
-import { storeIdToCountry } from "../../apple/config";
-import { listVersions } from "../../apple/versionFinder";
 import { getAccountOptionLabel } from "../../utils/accountDisplay";
 import { getErrorMessage } from "../../utils/error";
 import { getAccountContext } from "../../utils/toast";
 import { isNewerVersion } from "../../utils/version";
+import { storeIdToCountry } from "../../apple/config";
 import type { Software } from "../../types";
 
 async function responseErrorMessage(res: Response): Promise<string> {
@@ -42,7 +42,7 @@ export default function PackageDetail() {
     useDownloads();
   const { t } = useTranslation();
   const addToast = useToastStore((s) => s.addToast);
-  const { accounts } = useAccounts();
+  const { accounts, updateAccount } = useAccounts();
   const demoMode = useSettingsStore((s) => s.demoMode);
   const { startDownload } = useDownloadAction();
 
@@ -60,7 +60,7 @@ export default function PackageDetail() {
   if (!task) {
     return (
       <PageContainer title={t("downloads.package.title")}>
-        <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+        <div className="py-12 text-center text-muted">
           {tasks.length === 0 ? t("loading") : t("downloads.package.notFound")}
         </div>
       </PageContainer>
@@ -152,6 +152,7 @@ export default function PackageDetail() {
         setLatestApp(app);
         const result = await listVersions(account, app);
         setAvailableVersions(result.versions);
+        await updateAccount(result.account);
         setSelectedVersion(result.versions[0] || "");
         setShowUpdateModal(true);
       } else {
@@ -228,15 +229,15 @@ export default function PackageDetail() {
             size="lg"
           />
           <div className="flex-1">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+            <h2 className="page-title">
               {task.software.name}
             </h2>
-            <p className="text-gray-500 dark:text-gray-400">
+            <p className="page-subtitle">
               {task.software.artistName}
             </p>
             <div className="flex items-center gap-2 mt-2">
               <Badge status={task.status} />
-              <span className="text-sm text-gray-500 dark:text-gray-400">
+              <span className="text-[13px] text-muted">
                 v{task.software.version}
               </span>
             </div>
@@ -246,7 +247,7 @@ export default function PackageDetail() {
         {(isActive || isPaused) && (
           <div>
             <ProgressBar progress={task.progress} />
-            <div className="flex justify-between mt-1 text-sm text-gray-500 dark:text-gray-400">
+            <div className="mt-1 flex justify-between text-[13px] text-muted">
               <span>{Math.round(task.progress)}%</span>
               {task.speed && isActive && <span>{task.speed}</span>}
             </div>
@@ -254,40 +255,40 @@ export default function PackageDetail() {
         )}
 
         {task.error && (
-          <p className="text-sm text-red-500 dark:text-red-400">{task.error}</p>
+          <p className="alert" data-tone="error">{task.error}</p>
         )}
 
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
+        <div className="card card-pad">
           <dl className="space-y-3 text-sm">
             <div className="flex justify-between">
-              <dt className="text-gray-500 dark:text-gray-400 flex-shrink-0">
+              <dt className="detail-label flex-shrink-0">
                 {t("downloads.package.bundleId")}
               </dt>
-              <dd className="text-gray-900 dark:text-gray-200 min-w-0 truncate ml-4">
+              <dd className="detail-value ml-4 min-w-0 truncate">
                 {task.software.bundleID}
               </dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-gray-500 dark:text-gray-400 flex-shrink-0">
+              <dt className="detail-label flex-shrink-0">
                 {t("downloads.package.version")}
               </dt>
-              <dd className="text-gray-900 dark:text-gray-200">
+              <dd className="detail-value">
                 {task.software.version}
               </dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-gray-500 dark:text-gray-400 flex-shrink-0">
+              <dt className="detail-label flex-shrink-0">
                 {t("downloads.package.account")}
               </dt>
-              <dd className="text-gray-900 dark:text-gray-200 min-w-0 truncate ml-4">
+              <dd className="detail-value ml-4 min-w-0 truncate">
                 {accountLabel}
               </dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-gray-500 dark:text-gray-400 flex-shrink-0">
+              <dt className="detail-label flex-shrink-0">
                 {t("downloads.package.created")}
               </dt>
-              <dd className="text-gray-900 dark:text-gray-200">
+              <dd className="detail-value">
                 {new Date(task.createdAt).toLocaleString()}
               </dd>
             </div>
@@ -301,7 +302,7 @@ export default function PackageDetail() {
                 <button
                   onClick={handleCheckUpdate}
                   disabled={checkingUpdate}
-                  className="px-4 py-2 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                  className="btn btn-ghost"
                 >
                   {checkingUpdate
                     ? t("downloads.package.checkingUpdate")
@@ -312,7 +313,7 @@ export default function PackageDetail() {
                     <a
                       href={installInfo.installUrl}
                       onClick={() => toastAction("toast.title.installStarted")}
-                      className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                      className="btn btn-success"
                     >
                       {t("downloads.package.install")}
                     </a>
@@ -320,21 +321,21 @@ export default function PackageDetail() {
                     <div className="relative group flex items-center">
                       <button
                         onClick={handleShare}
-                        className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors cursor-pointer"
+                        className="btn btn-accent cursor-pointer"
                       >
                         {t("downloads.package.share")}
                       </button>
                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-200 z-50 pointer-events-none">
-                        <div className="bg-white p-2 rounded-lg shadow-xl border border-gray-200 flex flex-col items-center">
+                        <div className="flex flex-col items-center rounded-[14px] border border-border-strong bg-elevated p-2 shadow-[0_20px_50px_-24px_rgba(0,0,0,0.5)]">
                           <QRCodeSVG
                             value={installInfo.installUrl}
                             size={128}
                             className="mb-1"
                           />
-                          <span className="text-xs text-gray-500 mt-1 whitespace-nowrap">
+                          <span className="mt-1 whitespace-nowrap text-[12px] text-muted">
                             {t("downloads.package.scan")}
                           </span>
-                          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-b border-r border-gray-200 transform rotate-45"></div>
+                          <div className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-b border-r border-border-strong bg-elevated"></div>
                         </div>
                       </div>
                     </div>
@@ -343,14 +344,14 @@ export default function PackageDetail() {
                 <button
                   onClick={() => handleDownloadIpa("device")}
                   disabled={downloadAction !== null}
-                  className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="btn btn-primary"
                 >
                   {t("downloads.package.downloadIpa")}
                 </button>
                 <button
                   onClick={() => handleDownloadIpa("simulator")}
                   disabled={downloadAction !== null}
-                  className="px-4 py-2 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                  className="btn btn-ghost"
                 >
                   {t("downloads.package.downloadSimulatorIpa")}
                 </button>
@@ -359,7 +360,7 @@ export default function PackageDetail() {
             {canPause && (
               <button
                 onClick={() => pauseDownload(task.id)}
-                className="px-4 py-2 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                className="btn btn-ghost"
               >
                 {t("downloads.package.pause")}
               </button>
@@ -367,14 +368,14 @@ export default function PackageDetail() {
             {isPaused && (
               <button
                 onClick={() => resumeDownload(task.id)}
-                className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                className="btn btn-primary"
               >
                 {t("downloads.package.resume")}
               </button>
             )}
             <button
               onClick={handleDelete}
-              className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+              className="btn btn-danger"
             >
               {t("downloads.package.delete")}
             </button>
@@ -388,20 +389,20 @@ export default function PackageDetail() {
         title={t("downloads.package.updateAvailable")}
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-600 dark:text-gray-300">
+          <p className="text-[13px] text-muted">
             {t("downloads.package.updatePrompt", {
               version: latestApp?.version,
             })}
           </p>
           {availableVersions.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="field-label">
                 {t("downloads.package.selectVersion")}
               </label>
               <select
                 value={selectedVersion}
                 onChange={(e) => setSelectedVersion(e.target.value)}
-                className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-gray-900 dark:text-white"
+                className="field-input field-select"
               >
                 {availableVersions.map((v, i) => (
                   <option key={v} value={v}>
@@ -416,13 +417,13 @@ export default function PackageDetail() {
           <div className="flex justify-end gap-3 mt-6">
             <button
               onClick={() => setShowUpdateModal(false)}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              className="btn btn-ghost"
             >
               {t("settings.data.cancel")}
             </button>
             <button
               onClick={handleConfirmUpdate}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+              className="btn btn-primary"
             >
               {t("downloads.package.update")}
             </button>

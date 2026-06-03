@@ -62,10 +62,10 @@ export default function HomePage() {
     <PageContainer>
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="page-title">
             {t("home.welcome")}
           </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
+          <p className="page-subtitle">
             {t("home.subtitle")}
           </p>
         </div>
@@ -100,11 +100,11 @@ export default function HomePage() {
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5">
-      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+    <div className="card card-pad">
+      <p className="text-[12.5px] font-medium text-muted">
         {label}
       </p>
-      <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
+      <p className="mt-1 text-[28px] font-semibold tracking-normal text-ink">
         {value}
       </p>
     </div>
@@ -123,12 +123,12 @@ function ActionCard({
   return (
     <Link
       to={to}
-      className="block bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-5 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm transition-all"
+      className="list-row p-5"
     >
-      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+      <h3 className="text-[13.5px] font-semibold text-ink">
         {title}
       </h3>
-      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+      <p className="mt-1 text-[13px] text-muted">
         {description}
       </p>
     </Link>

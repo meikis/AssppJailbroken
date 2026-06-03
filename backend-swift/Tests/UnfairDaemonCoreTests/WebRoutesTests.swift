@@ -38,6 +38,27 @@ final class WebRoutesTests: XCTestCase {
         try app.testable().test(.GET, "/assets/missing.js") { response in
             XCTAssertEqual(response.status, .notFound)
         }
+
+        try app.testable().test(.GET, "/api/missing") { response in
+            XCTAssertEqual(response.status, .notFound)
+        }
+    }
+
+    func testAppleRoutesReturnBadRequestForInvalidBody() throws {
+        let context = try WebTestContext()
+        defer { context.cleanup() }
+
+        let app = Application(.testing)
+        defer { app.shutdown() }
+        let manager = try WebDownloadManager(config: context.config)
+        try webRoutes(app, config: context.config, manager: manager)
+
+        try app.testable().test(.POST, "/api/apple/versions", beforeRequest: { request in
+            try request.content.encode([String: String]())
+        }) { response in
+            XCTAssertEqual(response.status, .badRequest)
+            XCTAssertTrue(response.body.string.contains("account"))
+        }
     }
 }
 

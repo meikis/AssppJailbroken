@@ -1,6 +1,3 @@
-export const userAgent =
-  "Configurator/2.17 (Macintosh; OS X 15.2; 24C5089c) AppleWebKit/0620.1.16.11.6";
-
 export const countryCodeMap: Record<string, string> = {
   AE: "143481",
   AG: "143540",
@@ -144,16 +141,6 @@ export function generateDeviceId(): string {
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-}
-
-export function storeAPIHost(pod?: string): string {
-  if (pod) return `p${pod}-buy.itunes.apple.com`;
-  return "p25-buy.itunes.apple.com";
-}
-
-export function purchaseAPIHost(pod?: string): string {
-  if (pod) return `p${pod}-buy.itunes.apple.com`;
-  return "buy.itunes.apple.com";
 }
 
 export function countryToStoreId(country: string): string | undefined {

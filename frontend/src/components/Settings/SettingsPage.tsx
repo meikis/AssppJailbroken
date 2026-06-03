@@ -186,15 +186,15 @@ export default function SettingsPage() {
   return (
     <PageContainer title={t("settings.title")}>
       <div className="space-y-6">
-        <section className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <section className="card card-pad">
+          <h2 className="section-title mb-4">
             {t("settings.language.title")}
           </h2>
           <div className="space-y-4">
             <div>
               <label
                 htmlFor="language"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                className="field-label"
               >
                 {t("settings.language.label")}
               </label>
@@ -206,7 +206,7 @@ export default function SettingsPage() {
                   await i18n.changeLanguage(newLang);
                   addToast(t("settings.language.changed"), "success");
                 }}
-                className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-base text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                className="field-input field-select"
               >
                 <option value="en-US">English (US)</option>
                 <option value="zh-CN">简体中文</option>
@@ -219,8 +219,8 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <section className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <section className="card card-pad">
+          <h2 className="section-title mb-4">
             {t("settings.demo.title")}
           </h2>
           <label
@@ -228,10 +228,10 @@ export default function SettingsPage() {
             className="flex items-center justify-between gap-4 cursor-pointer"
           >
             <div>
-              <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              <span className="block text-[13px] font-medium text-ink">
                 {t("settings.demo.label")}
               </span>
-              <span className="block text-sm text-gray-500 dark:text-gray-400 mt-1">
+              <span className="mt-1 block text-[13px] text-muted">
                 {t("settings.demo.description")}
               </span>
             </div>
@@ -242,19 +242,19 @@ export default function SettingsPage() {
               onChange={(e) => handleDemoModeChange(e.target.checked)}
               className="sr-only peer"
             />
-            <span className="relative inline-flex h-6 w-11 shrink-0 rounded-full bg-gray-200 dark:bg-gray-700 transition-colors peer-checked:bg-blue-600 after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-white after:transition-transform peer-checked:after:translate-x-5" />
+            <span className="switch-track" />
           </label>
         </section>
 
-        <section className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <section className="card card-pad">
+          <h2 className="section-title mb-4">
             {t("settings.defaults.title")}
           </h2>
           <div className="space-y-4">
             <div>
               <label
                 htmlFor="country"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                className="field-label"
               >
                 {t("settings.defaults.country")}
               </label>
@@ -265,7 +265,7 @@ export default function SettingsPage() {
                   setCountry(e.target.value);
                   addToast(t("settings.defaults.countryChanged"), "success");
                 }}
-                className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-base text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                className="field-input field-select"
               >
                 {sortedCountries.map((code) => (
                   <option key={code} value={code}>
@@ -277,7 +277,7 @@ export default function SettingsPage() {
             <div>
               <label
                 htmlFor="entity"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                className="field-label"
               >
                 {t("settings.defaults.entity")}
               </label>
@@ -288,7 +288,7 @@ export default function SettingsPage() {
                   setEntity(e.target.value);
                   addToast(t("settings.defaults.entityChanged"), "success");
                 }}
-                className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-base text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                className="field-input field-select"
               >
                 {entityTypes.map((et) => (
                   <option key={et.value} value={et.value}>
@@ -300,8 +300,8 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <section className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <section className="card card-pad">
+          <h2 className="section-title mb-4">
             {t("settings.server.title")}
           </h2>
           {serverInfo ? (
@@ -309,10 +309,10 @@ export default function SettingsPage() {
               <dl className="space-y-3">
                 {serverInfo.uptime != null && (
                   <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <dt className="detail-label">
                       {t("settings.server.uptime")}
                     </dt>
-                    <dd className="text-sm text-gray-900 dark:text-gray-200">
+                    <dd className="detail-value">
                       {formatUptime(serverInfo.uptime)}
                     </dd>
                   </div>
@@ -320,80 +320,80 @@ export default function SettingsPage() {
               </dl>
 
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                <h3 className="section-title mb-3">
                   {t("settings.server.configuration")}
                 </h3>
                 <dl className="space-y-3">
                   <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <dt className="detail-label">
                       PORT
                     </dt>
-                    <dd className="text-sm text-gray-900 dark:text-gray-200 font-mono">
+                    <dd className="detail-value font-mono">
                       {serverInfo.port}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <dt className="detail-label">
                       DATA_DIR
                     </dt>
-                    <dd className="text-sm text-gray-900 dark:text-gray-200 font-mono">
+                    <dd className="detail-value font-mono">
                       {serverInfo.dataDir}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <dt className="detail-label">
                       PUBLIC_BASE_URL
                     </dt>
-                    <dd className="text-sm text-gray-900 dark:text-gray-200 font-mono">
+                    <dd className="detail-value font-mono">
                       {serverInfo.publicBaseUrl || (
-                        <span className="text-gray-400 dark:text-gray-500 italic">
+                        <span className="text-subtle italic">
                           {t("settings.server.notSet")}
                         </span>
                       )}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <dt className="detail-label">
                       UNSAFE_DANGEROUSLY_DISABLE_HTTPS_REDIRECT
                     </dt>
-                    <dd className="text-sm text-gray-900 dark:text-gray-200 font-mono">
+                    <dd className="detail-value font-mono">
                       {serverInfo.disableHttpsRedirect
                         ? t("settings.server.enabled")
                         : t("settings.server.disabled")}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <dt className="detail-label">
                       AUTO_CLEANUP_DAYS
                     </dt>
-                    <dd className="text-sm text-gray-900 dark:text-gray-200 font-mono">
+                    <dd className="detail-value font-mono">
                       {serverInfo.autoCleanupDays ||
                         t("settings.server.disabled")}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <dt className="detail-label">
                       AUTO_CLEANUP_MAX_MB
                     </dt>
-                    <dd className="text-sm text-gray-900 dark:text-gray-200 font-mono">
+                    <dd className="detail-value font-mono">
                       {serverInfo.autoCleanupMaxMB ||
                         t("settings.server.disabled")}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <dt className="detail-label">
                       MAX_DOWNLOAD_MB
                     </dt>
-                    <dd className="text-sm text-gray-900 dark:text-gray-200 font-mono">
+                    <dd className="detail-value font-mono">
                       {serverInfo.maxDownloadMB ||
                         t("settings.server.disabled")}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <dt className="detail-label">
                       DOWNLOAD_THREADS
                     </dt>
-                    <dd className="text-sm text-gray-900 dark:text-gray-200 font-mono">
+                    <dd className="detail-value font-mono">
                       {serverInfo.downloadThreads ?? 8}
                     </dd>
                   </div>
@@ -401,30 +401,30 @@ export default function SettingsPage() {
               </div>
             </div>
           ) : (
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-[13px] text-muted">
               {t("settings.server.offline")}
             </p>
           )}
         </section>
 
-        <section className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <section className="card card-pad">
+          <h2 className="section-title mb-4">
             {t("settings.data.title")}
           </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          <p className="mb-4 text-[13px] text-muted">
             {t("settings.data.description")}
           </p>
 
           <div className="flex flex-wrap gap-3 mb-6">
             <button
               onClick={() => setExportModalOpen(true)}
-              className="px-4 py-2 text-sm font-medium text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-800 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+              className="btn btn-ghost"
             >
               {t("settings.data.exportBtn")}
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 text-sm font-medium text-green-600 dark:text-green-400 border border-green-300 dark:border-green-800 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/30 transition-colors"
+              className="btn btn-success"
             >
               {t("settings.data.importBtn")}
             </button>
@@ -447,17 +447,17 @@ export default function SettingsPage() {
                 window.location.href = "/";
               }, 1000);
             }}
-            className="px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+            className="btn btn-danger"
           >
             {t("settings.data.button")}
           </button>
         </section>
 
-        <section className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        <section className="card card-pad">
+          <h2 className="section-title mb-4">
             {t("settings.about.title")}
           </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-[13px] text-muted">
             {t("settings.about.description")}
           </p>
           {serverInfo && (
@@ -465,20 +465,20 @@ export default function SettingsPage() {
               {serverInfo.buildCommit &&
                 serverInfo.buildCommit !== "unknown" && (
                   <div>
-                    <dt className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                    <dt className="text-[12px] font-medium text-subtle">
                       {t("settings.about.buildCommit")}
                     </dt>
-                    <dd className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                    <dd className="font-mono text-[12px] text-muted">
                       {serverInfo.buildCommit.slice(0, 7)}
                     </dd>
                   </div>
                 )}
               {serverInfo.buildDate && serverInfo.buildDate !== "unknown" && (
                 <div>
-                  <dt className="text-xs font-medium text-gray-400 dark:text-gray-500">
+                  <dt className="text-[12px] font-medium text-subtle">
                     {t("settings.about.buildDate")}
                   </dt>
-                  <dd className="text-xs text-gray-500 dark:text-gray-400">
+                  <dd className="text-[12px] text-muted">
                     {new Date(serverInfo.buildDate).toLocaleString()}
                   </dd>
                 </div>
@@ -495,39 +495,39 @@ export default function SettingsPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="field-label">
               {t("settings.data.passwordPrompt")}
             </label>
             <input
               type="password"
               value={exportPassword}
               onChange={(e) => setExportPassword(e.target.value)}
-              className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-base text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+              className="field-input"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="field-label">
               {t("settings.data.passwordConfirm")}
             </label>
             <input
               type="password"
               value={exportConfirmPassword}
               onChange={(e) => setExportConfirmPassword(e.target.value)}
-              className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-base text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+              className="field-input"
             />
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-3">
           <button
             onClick={() => setExportModalOpen(false)}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            className="btn btn-ghost"
           >
             {t("settings.data.cancel")}
           </button>
           <button
             onClick={handleExport}
             disabled={!exportPassword || !exportConfirmPassword}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="btn btn-primary"
           >
             {t("settings.data.confirmBtn")}
           </button>
@@ -541,28 +541,28 @@ export default function SettingsPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className="field-label">
               {t("settings.data.passwordPrompt")}
             </label>
             <input
               type="password"
               value={importPassword}
               onChange={(e) => setImportPassword(e.target.value)}
-              className="block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-base text-gray-900 dark:text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+              className="field-input"
             />
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-3">
           <button
             onClick={() => setImportModalOpen(false)}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            className="btn btn-ghost"
           >
             {t("settings.data.cancel")}
           </button>
           <button
             onClick={handleImport}
             disabled={!importPassword}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="btn btn-primary"
           >
             {t("settings.data.confirmBtn")}
           </button>
@@ -574,7 +574,7 @@ export default function SettingsPage() {
         onClose={() => setConflictModalOpen(false)}
         title={t("settings.data.conflictTitle")}
       >
-        <p className="text-sm text-gray-700 dark:text-gray-300 mb-6">
+        <p className="mb-6 text-[13px] text-muted">
           {t("settings.data.conflictDesc", {
             conflict: conflictStats.conflict,
             new: conflictStats.new,
@@ -583,19 +583,19 @@ export default function SettingsPage() {
         <div className="flex flex-col gap-3">
           <button
             onClick={() => handleResolveConflict(true)}
-            className="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
+            className="btn btn-danger w-full"
           >
             {t("settings.data.conflictOverwrite")}
           </button>
           <button
             onClick={() => handleResolveConflict(false)}
-            className="w-full px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            className="btn btn-ghost w-full"
           >
             {t("settings.data.conflictSkip")}
           </button>
           <button
             onClick={() => setConflictModalOpen(false)}
-            className="w-full px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 mt-2 transition-colors"
+            className="btn btn-ghost mt-2 w-full"
           >
             {t("settings.data.cancel")}
           </button>

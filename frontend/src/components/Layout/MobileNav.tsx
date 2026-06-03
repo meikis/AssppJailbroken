@@ -20,22 +20,16 @@ export default function MobileNav() {
   const { t } = useTranslation();
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 z-50 safe-bottom transition-colors duration-200">
-      <div className="flex justify-around items-center h-14">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-bg border-t border-border z-50 safe-bottom">
+      <div className="flex justify-around items-center h-16 px-2">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.to === "/"}
-            className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 px-2 py-1 text-xs transition-colors ${
-                isActive
-                  ? "text-blue-600 dark:text-blue-400"
-                  : "text-gray-500 dark:text-gray-400"
-              }`
-            }
+            className="mobile-nav-item"
           >
-            <item.icon className="w-5 h-5" />
+            <item.icon className="w-4 h-4" />
             <span>{t(`nav.${item.label}`)}</span>
           </NavLink>
         ))}

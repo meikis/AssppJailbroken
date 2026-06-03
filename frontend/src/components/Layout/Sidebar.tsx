@@ -24,32 +24,29 @@ export default function Sidebar() {
   const { t } = useTranslation();
 
   return (
-    <aside className="hidden md:flex md:flex-col md:w-60 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 h-screen sticky top-0 transition-colors duration-200">
-      <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-800">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+    <aside className="hidden md:flex md:flex-col md:w-56 bg-bg border-r border-border h-screen sticky top-0">
+      <div className="p-5">
+        <h1 className="flex items-center gap-2 text-[15px] font-semibold tracking-normal text-ink">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-ink text-[10px] font-bold text-on-ink">
+            A
+          </span>
           Asspp Web
         </h1>
       </div>
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 space-y-1 overflow-y-auto" aria-label="Page">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.to === "/"}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                isActive
-                  ? "bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400"
-                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
-              }`
-            }
+            className="sidebar-nav-item gap-3"
           >
-            <item.icon className="w-5 h-5" />
+            <item.icon className="w-4 h-4" />
             {t(`nav.${item.label}`)}
           </NavLink>
         ))}
       </nav>
-      <div className="p-3 border-t border-gray-200 dark:border-gray-800">
+      <div className="p-3 border-t border-border">
         <ThemeToggle />
       </div>
     </aside>
@@ -69,12 +66,12 @@ function ThemeToggle() {
   return (
     <button
       onClick={cycleTheme}
-      className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+      className="sidebar-nav-item gap-3"
       title={t(`theme.${theme}`)}
     >
-      {theme === "light" && <SunIcon className="w-5 h-5" />}
-      {theme === "dark" && <MoonIcon className="w-5 h-5" />}
-      {theme === "system" && <SystemIcon className="w-5 h-5" />}
+      {theme === "light" && <SunIcon className="w-4 h-4" />}
+      {theme === "dark" && <MoonIcon className="w-4 h-4" />}
+      {theme === "system" && <SystemIcon className="w-4 h-4" />}
       <span>{t(`theme.${theme}`)}</span>
     </button>
   );

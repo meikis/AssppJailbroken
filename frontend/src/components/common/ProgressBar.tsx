@@ -10,11 +10,10 @@ export default function ProgressBar({
   const clamped = Math.min(100, Math.max(0, progress));
 
   return (
-    <div
-      className={`w-full bg-gray-200 dark:bg-gray-800 rounded-full h-2 ${className}`}
-    >
+    <div className={`progress-track w-full ${className}`}>
       <div
-        className="bg-blue-600 dark:bg-blue-500 h-2 rounded-full transition-all duration-300"
+        className="progress-fill"
+        data-busy={clamped > 0 && clamped < 100 ? "true" : undefined}
         style={{ width: `${clamped}%` }}
       />
     </div>

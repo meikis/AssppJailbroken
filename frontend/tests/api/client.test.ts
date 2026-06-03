@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { apiGet, apiPost, apiDelete } from "../../src/api/client";
+import { ApiError, apiGet, apiPost, apiDelete } from "../../src/api/client";
 
 describe("api/client", () => {
   beforeEach(() => {
@@ -25,9 +25,33 @@ describe("api/client", () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
         ok: false,
         text: () => Promise.resolve("Not found"),
+        status: 404,
       } as Response);
 
       await expect(apiGet("/api/missing")).rejects.toThrow("Not found");
+    });
+
+    it("should preserve structured API errors", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+        ok: false,
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({
+              error: "Verification required",
+              code: "2fa",
+              codeRequired: true,
+            }),
+          ),
+        status: 400,
+      } as Response);
+
+      await expect(apiGet("/api/missing")).rejects.toMatchObject({
+        name: "ApiError",
+        message: "Verification required",
+        status: 400,
+        code: "2fa",
+        codeRequired: true,
+      } satisfies Partial<ApiError>);
     });
   });
 
@@ -80,6 +104,7 @@ describe("api/client", () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
         ok: false,
         text: () => Promise.resolve("Server error"),
+        status: 500,
       } as Response);
 
       await expect(apiDelete("/api/test/123")).rejects.toThrow("Server error");

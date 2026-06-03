@@ -20,7 +20,7 @@ final class WebDownloadManager {
         self.config = config
         try FileManager.default.createDirectory(at: packagesDirectory, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: config.dataDirectory, withIntermediateDirectories: true)
-        try loadCompletedTasks()
+        try loadPersistedTasks()
         cleanOrphanedPackages()
     }
 
@@ -132,7 +132,7 @@ final class WebDownloadManager {
         lock.unlock()
 
         deletePackageFile(path: filePath)
-        persistCompletedTasks()
+        persistTasks()
         return true
     }
 
@@ -149,6 +149,7 @@ final class WebDownloadManager {
         record.task.status = DownloadStatus.paused.rawValue
         record.task.speed = "0 B/s"
         lock.unlock()
+        persistTasks()
         return true
     }
 
@@ -206,6 +207,7 @@ final class WebDownloadManager {
             record.task.status = DownloadStatus.failed.rawValue
             record.task.error = String(describing: error)
             lock.unlock()
+            persistTasks()
             return
         }
 
@@ -213,6 +215,7 @@ final class WebDownloadManager {
         let sinfs = record.task.sinfs ?? []
         let iTunesMetadata = record.task.iTunesMetadata
         lock.unlock()
+        persistTasks()
 
         queue.async {
             var stage = "Download"
@@ -230,6 +233,7 @@ final class WebDownloadManager {
                         task.progress = 100
                         task.speed = "0 B/s"
                     }
+                    self.persistTasks()
                     try SinfInjector.inject(sinfs: sinfs, ipaURL: URL(fileURLWithPath: filePath), iTunesMetadata: iTunesMetadata)
                 }
 
@@ -239,6 +243,7 @@ final class WebDownloadManager {
                     task.progress = 100
                     task.speed = "0 B/s"
                 }
+                self.persistTasks()
                 try self.decryptInPlace(URL(fileURLWithPath: filePath), taskID: id)
 
                 self.updateTask(id: id) { task in
@@ -250,9 +255,10 @@ final class WebDownloadManager {
                     task.iTunesMetadata = nil
                     task.sessionFieldsCleared()
                 }
-                self.persistCompletedTasks()
+                self.persistTasks()
             } catch {
                 if self.isPaused(id: id) {
+                    self.persistTasks()
                     return
                 }
                 self.updateTask(id: id) { task in
@@ -261,6 +267,7 @@ final class WebDownloadManager {
                     task.speed = "0 B/s"
                     task.sessionFieldsCleared()
                 }
+                self.persistTasks()
             }
         }
     }
@@ -337,8 +344,7 @@ final class WebDownloadManager {
             throw Abort(.internalServerError, reason: message)
         }
 
-        try FileManager.default.removeItem(at: ipaURL)
-        try FileManager.default.moveItem(at: outputURL, to: ipaURL)
+        try replacePackageFile(at: ipaURL, with: outputURL)
     }
 
     private func reportProgress(id: String, downloaded: Int64, total: Int64, elapsed: TimeInterval, delta: Int64) {
@@ -384,27 +390,56 @@ final class WebDownloadManager {
             .appendingPathComponent("\(task.id).ipa")
     }
 
-    private func loadCompletedTasks() throws {
+    private func loadPersistedTasks() throws {
         guard FileManager.default.fileExists(atPath: tasksFile.path) else {
             return
         }
         let data = try Data(contentsOf: tasksFile)
         let persisted = try JSONDecoder().decode([DownloadTask].self, from: data)
-        for var task in persisted where task.status == DownloadStatus.completed.rawValue {
-            if let path = task.filePath, fileExists(path) {
+        var needsPersist = false
+        for var task in persisted {
+            task.sessionFieldsCleared()
+            task.speed = "0 B/s"
+
+            if task.status == DownloadStatus.completed.rawValue,
+               let path = task.filePath,
+               fileExists(path) {
                 task.progress = 100
                 task.speed = "0 B/s"
                 tasks[task.id] = TaskRecord(task: task)
+                continue
             }
+
+            if task.status == DownloadStatus.completed.rawValue {
+                task.status = DownloadStatus.failed.rawValue
+                task.error = "Package file is missing."
+                tasks[task.id] = TaskRecord(task: task)
+                needsPersist = true
+                continue
+            }
+
+            if task.status == DownloadStatus.failed.rawValue {
+                tasks[task.id] = TaskRecord(task: task)
+                continue
+            }
+
+            if DownloadStatus(rawValue: task.status) != nil {
+                let previousStatus = task.status
+                task.status = DownloadStatus.failed.rawValue
+                task.error = "Task interrupted while \(previousStatus)."
+                tasks[task.id] = TaskRecord(task: task)
+                needsPersist = true
+            }
+        }
+        if needsPersist {
+            persistTasks()
         }
     }
 
-    private func persistCompletedTasks() {
+    private func persistTasks() {
         lock.lock()
-        let completed = tasks.values.compactMap { record -> DownloadTask? in
-            guard record.task.status == DownloadStatus.completed.rawValue,
-                  record.task.filePath != nil
-            else {
+        let persisted = tasks.values.compactMap { record -> DownloadTask? in
+            guard shouldPersist(record.task) else {
                 return nil
             }
             var task = record.task
@@ -416,11 +451,18 @@ final class WebDownloadManager {
         lock.unlock()
 
         do {
-            let data = try JSONEncoder().encode(completed)
+            let data = try JSONEncoder().encode(persisted)
             try data.write(to: tasksFile, options: .atomic)
         } catch {
-            fputs("unfaird persist completed tasks failed: \(error)\n", stderr)
+            fputs("unfaird persist download tasks failed: \(error)\n", stderr)
         }
+    }
+
+    private func shouldPersist(_ task: DownloadTask) -> Bool {
+        guard DownloadStatus(rawValue: task.status) != nil else {
+            return false
+        }
+        return task.status != DownloadStatus.pending.rawValue || task.filePath != nil
     }
 
     private func cleanOrphanedPackages() {
@@ -439,6 +481,27 @@ final class WebDownloadManager {
             }
             if known.contains(url.standardizedFileURL.path) == false {
                 try? FileManager.default.removeItem(at: url)
+            }
+        }
+        removeEmptyPackageDirectories()
+    }
+
+    private func removeEmptyPackageDirectories() {
+        guard let enumerator = FileManager.default.enumerator(at: packagesDirectory, includingPropertiesForKeys: [.isDirectoryKey]) else {
+            return
+        }
+        let directories = enumerator.compactMap { item -> URL? in
+            guard let url = item as? URL,
+                  (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+            else {
+                return nil
+            }
+            return url
+        }.sorted { $0.path.count > $1.path.count }
+
+        for directory in directories where directory.standardizedFileURL.path != packagesDirectory.standardizedFileURL.path {
+            if (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)).map({ $0.isEmpty }) == true {
+                try? FileManager.default.removeItem(at: directory)
             }
         }
     }
@@ -514,6 +577,10 @@ final class WebDownloadManager {
             try? FileManager.default.removeItem(at: simulatorURL)
         }
         try? FileManager.default.removeItem(at: resolved)
+    }
+
+    private func replacePackageFile(at destination: URL, with source: URL) throws {
+        _ = try FileManager.default.replaceItemAt(destination, withItemAt: source)
     }
 
     private func validateDownloadURL(_ rawValue: String) throws {

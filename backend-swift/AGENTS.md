@@ -2,7 +2,7 @@
 
 ## Project
 
-`unfaird` is a SwiftPM 5.4 Vapor daemon. It accepts IPA decrypt requests over HTTP, serves the AssppWeb API/static frontend, and runs the local UnfairKit runner through POSIX spawn.
+`unfaird` is a SwiftPM 5.4 Vapor daemon. It accepts IPA decrypt requests over HTTP, serves the AssppWeb API/static frontend, runs Apple protocol requests for the web UI, and runs the local UnfairKit runner through POSIX spawn.
 
 ## Build
 
@@ -24,6 +24,26 @@ make build
 ```
 
 ## API
+
+Apple account and download flow:
+
+```bash
+curl -sS -X POST http://127.0.0.1:8080/api/apple/authenticate \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"user@example.com","password":"password","deviceIdentifier":"aabbccddeeff"}'
+```
+
+Apple protocol routes are:
+
+```text
+POST /api/apple/authenticate
+POST /api/apple/purchase
+POST /api/apple/versions
+POST /api/apple/version-metadata
+POST /api/downloads/apple
+```
+
+The Swift backend owns bag resolution, authentication, pod routing, cookie merging, license acquisition, download info retrieval, IPA download, SINF injection, and local decryption for the AssppWeb UI and local HTTP clients.
 
 Decrypt an IPA:
 

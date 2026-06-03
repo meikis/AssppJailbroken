@@ -1,5 +1,6 @@
 SHELL := /bin/bash
 
+DEVICE_HOST ?=
 THEOS ?= $(HOME)/theos
 THEOS_PACKAGE_SCHEME ?= rootless
 THEOS_PACKAGE_DIR_NAME ?= debs

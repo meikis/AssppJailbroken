@@ -1,11 +1,11 @@
-// swift-tools-version: 5.4
+// swift-tools-version: 6.3
 
 import PackageDescription
 
 let package = Package(
     name: "unfaird",
     platforms: [
-        .macOS(.v10_15),
+        .macOS(.v14),
         .iOS(.v13),
     ],
     products: [
@@ -13,15 +13,17 @@ let package = Package(
     ],
     dependencies: [
         .package(name: "unfair-swift", path: "../../unfair"),
-        .package(url: "https://github.com/apple/swift-argument-parser.git", .upToNextMinor(from: "1.0.0")),
-        .package(url: "https://github.com/vapor/vapor.git", .exact("4.60.0")),
-        .package(url: "https://github.com/weichsel/ZIPFoundation.git", .exact("0.9.19")),
+        .package(url: "https://github.com/swift-server/async-http-client.git", exact: "1.33.1"),
+        .package(url: "https://github.com/apple/swift-argument-parser.git", "1.0.0"..<"1.1.0"),
+        .package(url: "https://github.com/vapor/vapor.git", exact: "4.60.0"),
+        .package(url: "https://github.com/weichsel/ZIPFoundation.git", exact: "0.9.19"),
     ],
     targets: [
         .target(name: "UnfairDaemonSupport"),
         .target(
             name: "UnfairDaemonCore",
             dependencies: [
+                .product(name: "AsyncHTTPClient", package: "async-http-client"),
                 .product(name: "Vapor", package: "vapor"),
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
             ]
@@ -43,5 +45,6 @@ let package = Package(
                 .product(name: "XCTVapor", package: "vapor"),
             ]
         ),
-    ]
+    ],
+    swiftLanguageModes: [.v5]
 )

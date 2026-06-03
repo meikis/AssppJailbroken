@@ -3,6 +3,8 @@ import Vapor
 import ZIPFoundation
 
 enum SimulatorIPABuilder {
+    private typealias FileLoadCommand = (offset: UInt64, localOffset: Int, command: UInt32, size: Int)
+
     private static let fatMagic: UInt32 = 0xcafebabe
     private static let fatMagic64: UInt32 = 0xcafebabf
     private static let machMagic64: UInt32 = 0xfeedfacf
@@ -50,6 +52,10 @@ enum SimulatorIPABuilder {
 
     static func patchedMachODataForTesting(_ data: Data) throws -> (data: Data, patchedSlices: Int) {
         try patchMachOData(data)
+    }
+
+    static func patchMachOFileForTesting(_ fileURL: URL) throws -> Bool {
+        try patchMachOFile(fileURL)
     }
 
     private static func isFresh(outputURL: URL, sourceURL: URL) throws -> Bool {
@@ -157,15 +163,223 @@ enum SimulatorIPABuilder {
     }
 
     private static func patchMachOFile(_ fileURL: URL) throws -> Bool {
-        let data = try Data(contentsOf: fileURL)
-        let patch = try patchMachOData(data)
-        guard patch.patchedSlices > 0 else {
+        let patchedSlices = try patchMachOFileInPlace(fileURL)
+        guard patchedSlices > 0 else {
             return false
         }
 
-        try patch.data.write(to: fileURL, options: .atomic)
         try FileManager.default.setAttributes([.posixPermissions: 0o777], ofItemAtPath: fileURL.path)
         return true
+    }
+
+    private static func patchMachOFileInPlace(_ fileURL: URL) throws -> Int {
+        let attributes = try FileManager.default.attributesOfItem(atPath: fileURL.path)
+        guard let fileSize = (attributes[.size] as? NSNumber)?.uint64Value else {
+            throw Abort(.badRequest, reason: "Missing Mach-O file size")
+        }
+        guard fileSize >= 4 else {
+            return 0
+        }
+
+        let fileHandle = try FileHandle(forUpdating: fileURL)
+        defer {
+            fileHandle.closeFile()
+        }
+
+        let magic = try readData(from: fileHandle, at: 0, length: 4)
+        let magicBE = try magic.uint32BE(at: 0)
+        if magicBE == fatMagic {
+            return try patchFatMachOFile(fileHandle, fileSize: fileSize, archSize: 20, is64BitFat: false)
+        }
+        if magicBE == fatMagic64 {
+            return try patchFatMachOFile(fileHandle, fileSize: fileSize, archSize: 32, is64BitFat: true)
+        }
+        if try magic.uint32LE(at: 0) == machMagic64 {
+            return try patchMachO64Slice(fileHandle, fileSize: fileSize, sliceOffset: 0, sliceSize: fileSize) ? 1 : 0
+        }
+        return 0
+    }
+
+    private static func patchFatMachOFile(
+        _ fileHandle: FileHandle,
+        fileSize: UInt64,
+        archSize: UInt64,
+        is64BitFat: Bool
+    ) throws -> Int {
+        let archCountData = try readData(from: fileHandle, at: 4, length: 4)
+        let archCount = UInt64(try archCountData.uint32BE(at: 0))
+        let archTableOffset: UInt64 = 8
+        guard archTableOffset + archCount * archSize <= fileSize else {
+            throw Abort(.badRequest, reason: "Malformed fat Mach-O header")
+        }
+
+        var patchedSlices = 0
+        for index in 0..<archCount {
+            let offset = archTableOffset + index * archSize
+            let sliceOffset: UInt64
+            let sliceSize: UInt64
+            if is64BitFat {
+                let arch = try readData(from: fileHandle, at: offset, length: Int(archSize))
+                sliceOffset = try arch.uint64BE(at: 8)
+                sliceSize = try arch.uint64BE(at: 16)
+            } else {
+                let arch = try readData(from: fileHandle, at: offset, length: Int(archSize))
+                sliceOffset = UInt64(try arch.uint32BE(at: 8))
+                sliceSize = UInt64(try arch.uint32BE(at: 12))
+            }
+            guard sliceOffset + sliceSize <= fileSize else {
+                throw Abort(.badRequest, reason: "Malformed fat Mach-O slice")
+            }
+            if try patchMachO64Slice(fileHandle, fileSize: fileSize, sliceOffset: sliceOffset, sliceSize: sliceSize) {
+                patchedSlices += 1
+            }
+        }
+        return patchedSlices
+    }
+
+    private static func patchMachO64Slice(
+        _ fileHandle: FileHandle,
+        fileSize: UInt64,
+        sliceOffset: UInt64,
+        sliceSize: UInt64
+    ) throws -> Bool {
+        guard sliceSize >= 32,
+              sliceOffset + sliceSize <= fileSize
+        else {
+            return false
+        }
+
+        let header = try readData(from: fileHandle, at: sliceOffset, length: 32)
+        guard try header.uint32LE(at: 0) == machMagic64 else {
+            return false
+        }
+
+        let commandCount = Int(try header.uint32LE(at: 16))
+        let commandsSize = Int(try header.uint32LE(at: 20))
+        let commandsOffset = sliceOffset + 32
+        let commandsEnd = commandsOffset + UInt64(commandsSize)
+        let sliceEnd = sliceOffset + sliceSize
+        guard commandCount >= 0,
+              commandsOffset <= commandsEnd,
+              commandsEnd <= sliceEnd
+        else {
+            throw Abort(.badRequest, reason: "Malformed Mach-O load command table")
+        }
+
+        let commandsData = try readData(from: fileHandle, at: commandsOffset, length: commandsSize)
+        let commands = try loadFileCommands(
+            in: commandsData,
+            absoluteOffset: commandsOffset,
+            count: commandCount
+        )
+
+        if commands.contains(where: { $0.command == lcBuildVersion }) {
+            try patchExistingBuildVersionCommands(fileHandle, commands: commands)
+            return true
+        }
+
+        guard let versionMinCommand = commands.first(where: { $0.command == lcVersionMinIPhoneOS }) else {
+            return false
+        }
+        try convertVersionMinToBuildVersion(
+            fileHandle,
+            sliceOffset: sliceOffset,
+            sliceSize: sliceSize,
+            commandsData: commandsData,
+            commands: commands,
+            commandsEnd: commandsEnd,
+            versionMinCommand: versionMinCommand
+        )
+        return try patchMachO64Slice(fileHandle, fileSize: fileSize, sliceOffset: sliceOffset, sliceSize: sliceSize)
+    }
+
+    private static func loadFileCommands(
+        in data: Data,
+        absoluteOffset: UInt64,
+        count: Int
+    ) throws -> [FileLoadCommand] {
+        var commands: [FileLoadCommand] = []
+        var commandOffset = 0
+        for _ in 0..<count {
+            guard commandOffset + 8 <= data.count else {
+                throw Abort(.badRequest, reason: "Malformed Mach-O load command")
+            }
+            let command = try data.uint32LE(at: commandOffset)
+            let commandSize = Int(try data.uint32LE(at: commandOffset + 4))
+            guard commandSize >= 8,
+                  commandOffset + commandSize <= data.count
+            else {
+                throw Abort(.badRequest, reason: "Malformed Mach-O load command size")
+            }
+            commands.append((
+                offset: absoluteOffset + UInt64(commandOffset),
+                localOffset: commandOffset,
+                command: command,
+                size: commandSize
+            ))
+            commandOffset += commandSize
+        }
+        guard commandOffset <= data.count else {
+            throw Abort(.badRequest, reason: "Malformed Mach-O load command table")
+        }
+        return commands
+    }
+
+    private static func patchExistingBuildVersionCommands(
+        _ fileHandle: FileHandle,
+        commands: [FileLoadCommand]
+    ) throws {
+        for command in commands {
+            if command.command == lcBuildVersion {
+                guard command.size >= buildVersionCommandSize else {
+                    throw Abort(.badRequest, reason: "Malformed LC_BUILD_VERSION command")
+                }
+                try writeUInt32LE(platformIOSSimulator, to: fileHandle, at: command.offset + 8)
+                try writeUInt32LE(version16, to: fileHandle, at: command.offset + 12)
+                try writeUInt32LE(version16, to: fileHandle, at: command.offset + 16)
+            }
+        }
+    }
+
+    private static func convertVersionMinToBuildVersion(
+        _ fileHandle: FileHandle,
+        sliceOffset: UInt64,
+        sliceSize: UInt64,
+        commandsData: Data,
+        commands: [FileLoadCommand],
+        commandsEnd: UInt64,
+        versionMinCommand: FileLoadCommand
+    ) throws {
+        guard versionMinCommand.size == versionMinCommandSize else {
+            throw Abort(.badRequest, reason: "Malformed LC_VERSION_MIN_IPHONEOS command")
+        }
+
+        let sliceEnd = sliceOffset + sliceSize
+        let firstContentOffset = try firstReferencedContentOffset(
+            in: commandsData,
+            sliceSize: sliceSize,
+            commands: commands
+        )
+        guard commandsEnd + UInt64(buildVersionExpansionSize) <= sliceEnd,
+              commandsEnd + UInt64(buildVersionExpansionSize) <= sliceOffset + firstContentOffset
+        else {
+            throw Abort(.badRequest, reason: "Mach-O load command padding is too small to migrate LC_VERSION_MIN_IPHONEOS")
+        }
+
+        let oldTailStart = versionMinCommand.offset + UInt64(versionMinCommandSize)
+        let tailLength = Int(commandsEnd - oldTailStart)
+        let tail = try readData(from: fileHandle, at: oldTailStart, length: tailLength)
+        try writeData(tail, to: fileHandle, at: oldTailStart + UInt64(buildVersionExpansionSize))
+
+        try writeUInt32LE(lcBuildVersion, to: fileHandle, at: versionMinCommand.offset)
+        try writeUInt32LE(UInt32(buildVersionCommandSize), to: fileHandle, at: versionMinCommand.offset + 4)
+        try writeUInt32LE(platformIOSSimulator, to: fileHandle, at: versionMinCommand.offset + 8)
+        try writeUInt32LE(version16, to: fileHandle, at: versionMinCommand.offset + 12)
+        try writeUInt32LE(version16, to: fileHandle, at: versionMinCommand.offset + 16)
+        try writeUInt32LE(0, to: fileHandle, at: versionMinCommand.offset + 20)
+
+        let oldCommandsSize = try readData(from: fileHandle, at: sliceOffset + 20, length: 4).uint32LE(at: 0)
+        try writeUInt32LE(oldCommandsSize + UInt32(buildVersionExpansionSize), to: fileHandle, at: sliceOffset + 20)
     }
 
     private static func patchMachOData(_ input: Data) throws -> (data: Data, patchedSlices: Int) {
@@ -435,6 +649,106 @@ enum SimulatorIPABuilder {
         }
 
         return firstOffset
+    }
+
+    private static func firstReferencedContentOffset(
+        in data: Data,
+        sliceSize: UInt64,
+        commands: [FileLoadCommand]
+    ) throws -> UInt64 {
+        var firstOffset = sliceSize
+        func record(_ offset: UInt64) {
+            if offset > 0 {
+                firstOffset = min(firstOffset, offset)
+            }
+        }
+
+        for command in commands {
+            let offset = command.localOffset
+            switch command.command {
+            case lcSegment64:
+                guard command.size >= 72 else {
+                    throw Abort(.badRequest, reason: "Malformed LC_SEGMENT_64 command")
+                }
+                let fileOffset = try data.uint64LE(at: offset + 32)
+                let fileSize = try data.uint64LE(at: offset + 40)
+                if fileSize > 0, fileOffset > 0 {
+                    record(fileOffset)
+                }
+                let sectionCount = Int(try data.uint32LE(at: offset + 64))
+                let sectionStart = offset + 72
+                guard sectionCount >= 0,
+                      sectionStart + sectionCount * 80 <= offset + command.size
+                else {
+                    throw Abort(.badRequest, reason: "Malformed LC_SEGMENT_64 sections")
+                }
+                for sectionIndex in 0..<sectionCount {
+                    let sectionOffset = sectionStart + sectionIndex * 80
+                    record(UInt64(try data.uint32LE(at: sectionOffset + 48)))
+                    record(UInt64(try data.uint32LE(at: sectionOffset + 56)))
+                }
+            case lcSymtab:
+                guard command.size >= 24 else {
+                    throw Abort(.badRequest, reason: "Malformed LC_SYMTAB command")
+                }
+                record(UInt64(try data.uint32LE(at: offset + 8)))
+                record(UInt64(try data.uint32LE(at: offset + 16)))
+            case lcDysymtab:
+                guard command.size >= 80 else {
+                    throw Abort(.badRequest, reason: "Malformed LC_DYSYMTAB command")
+                }
+                for relativeOffset in [32, 40, 48, 56, 64, 72] {
+                    record(UInt64(try data.uint32LE(at: offset + relativeOffset)))
+                }
+            case lcDyldInfo, lcDyldInfoOnly:
+                guard command.size >= 48 else {
+                    throw Abort(.badRequest, reason: "Malformed LC_DYLD_INFO command")
+                }
+                for relativeOffset in [8, 16, 24, 32, 40] {
+                    record(UInt64(try data.uint32LE(at: offset + relativeOffset)))
+                }
+            case lcCodeSignature:
+                guard command.size >= 16 else {
+                    throw Abort(.badRequest, reason: "Malformed LC_CODE_SIGNATURE command")
+                }
+                record(UInt64(try data.uint32LE(at: offset + 8)))
+            case lcEncryptionInfo64:
+                guard command.size >= 24 else {
+                    throw Abort(.badRequest, reason: "Malformed LC_ENCRYPTION_INFO_64 command")
+                }
+                record(UInt64(try data.uint32LE(at: offset + 8)))
+            default:
+                break
+            }
+        }
+
+        return firstOffset
+    }
+
+    private static func readData(from fileHandle: FileHandle, at offset: UInt64, length: Int) throws -> Data {
+        guard length >= 0 else {
+            throw Abort(.badRequest, reason: "Invalid Mach-O read length")
+        }
+        fileHandle.seek(toFileOffset: offset)
+        let data = fileHandle.readData(ofLength: length)
+        guard data.count == length else {
+            throw Abort(.badRequest, reason: "Unexpected end of Mach-O data")
+        }
+        return data
+    }
+
+    private static func writeData(_ data: Data, to fileHandle: FileHandle, at offset: UInt64) throws {
+        fileHandle.seek(toFileOffset: offset)
+        fileHandle.write(data)
+    }
+
+    private static func writeUInt32LE(_ value: UInt32, to fileHandle: FileHandle, at offset: UInt64) throws {
+        var data = Data()
+        data.append(UInt8(value & 0xff))
+        data.append(UInt8((value >> 8) & 0xff))
+        data.append(UInt8((value >> 16) & 0xff))
+        data.append(UInt8((value >> 24) & 0xff))
+        try writeData(data, to: fileHandle, at: offset)
     }
 
     private static func resolveLdidPath() throws -> String {

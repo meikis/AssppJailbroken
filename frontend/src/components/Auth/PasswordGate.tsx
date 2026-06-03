@@ -90,8 +90,8 @@ export default function PasswordGate({ children }: { children: ReactNode }) {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
-        <p className="text-gray-500 dark:text-gray-400">{t("loading")}</p>
+      <div className="flex min-h-screen items-center justify-center bg-bg">
+        <p className="text-muted">{t("loading")}</p>
       </div>
     );
   }
@@ -101,13 +101,13 @@ export default function PasswordGate({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center px-4">
+    <div className="flex min-h-screen items-center justify-center bg-bg px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600 text-white text-2xl font-semibold mb-4">
+          <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-[18px] bg-ink text-2xl font-semibold text-on-ink">
             A
           </div>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+          <h1 className="text-xl font-semibold text-ink">
             {t("auth.title")}
           </h1>
         </div>
@@ -120,18 +120,18 @@ export default function PasswordGate({ children }: { children: ReactNode }) {
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t("auth.placeholder")}
               autoFocus
-              className="w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+              className="field-input"
             />
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            <p className="alert" data-tone="error">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={submitting || !password}
-            className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="btn btn-primary w-full"
           >
             {submitting ? t("auth.verifying") : t("auth.submit")}
           </button>

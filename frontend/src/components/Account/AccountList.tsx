@@ -4,12 +4,12 @@ import { useTranslation } from "react-i18next";
 import PageContainer from "../Layout/PageContainer";
 import { useAccountsStore } from "../../store/accounts";
 import { useSettingsStore } from "../../store/settings";
-import { storeIdToCountry } from "../../apple/config";
 import {
   getAccountDisplayEmail,
   getAccountDisplayName,
   getAccountRouteSegment,
 } from "../../utils/accountDisplay";
+import { storeIdToCountry } from "../../apple/config";
 
 export default function AccountList() {
   const { t } = useTranslation();
@@ -26,22 +26,21 @@ export default function AccountList() {
       action={
         <Link
           to="/accounts/add"
-          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          className="btn btn-primary"
         >
           {t("accounts.add")}
         </Link>
       }
     >
       {loading ? (
-        <div className="text-center text-gray-500 dark:text-gray-400 py-12">
+        <div className="py-12 text-center text-muted">
           {t("accounts.loading")}
         </div>
       ) : accounts.length === 0 ? (
-        /* Removed transition-colors to prevent dark mode flashing */
-        <div className="flex flex-col items-center justify-center py-16 px-4 my-4 bg-gray-50 dark:bg-gray-900/30 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-2xl">
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-full shadow-sm mb-4 border border-gray-100 dark:border-gray-700">
+        <div className="empty-state my-4">
+          <div className="empty-state-icon">
             <svg
-              className="w-12 h-12 text-blue-500 dark:text-blue-400"
+              className="w-8 h-8"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -54,15 +53,15 @@ export default function AccountList() {
               />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 text-center">
+          <h3 className="mb-2 text-[15px] font-semibold text-ink">
             {t("accounts.empty")}
           </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 text-center max-w-sm">
+          <p className="mb-6 max-w-sm text-[13px] text-muted">
             {t("accounts.emptyDesc")}
           </p>
           <Link
             to="/accounts/add"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 hover:shadow-md transition-all active:scale-95"
+            className="btn btn-primary"
           >
             <svg
               className="w-4 h-4"
@@ -90,24 +89,18 @@ export default function AccountList() {
               <NavLink
                 key={account.email}
                 to={`/accounts/${getAccountRouteSegment(account, demoMode, index)}`}
-                className={({ isActive }) =>
-                  `block bg-white dark:bg-gray-900 rounded-lg border p-4 transition-colors ${
-                    isActive
-                      ? "border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30"
-                      : "border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700"
-                  }`
-                }
+                className="list-row p-4"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-gray-900 dark:text-white">
+                    <p className="text-[13.5px] font-medium text-ink">
                       {getAccountDisplayName(account, t, demoMode, index)}
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                    <p className="text-[12.5px] text-muted">
                       {getAccountDisplayEmail(account, t, demoMode)}
                     </p>
                   </div>
-                  <div className="text-sm text-gray-400 dark:text-gray-500">
+                  <div className="text-[12.5px] text-subtle">
                     {t(`countries.${countryCode}`, countryCode)}
                   </div>
                 </div>

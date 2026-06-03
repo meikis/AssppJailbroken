@@ -2,10 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import PageContainer from "../Layout/PageContainer";
-import DownloadItem from "./DownloadItem";
 import Modal from "../common/Modal";
 import ProgressBar from "../common/ProgressBar";
 import Spinner from "../common/Spinner";
+import DownloadItem from "./DownloadItem";
 import { useDownloads } from "../../hooks/useDownloads";
 import { useAccounts } from "../../hooks/useAccounts";
 import { useDownloadAction } from "../../hooks/useDownloadAction";
@@ -144,7 +144,7 @@ export default function DownloadList() {
           <button
             onClick={handleCheckAllUpdates}
             disabled={checkingAll}
-            className="px-4 py-2 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 transition-colors"
+            className="btn btn-ghost"
           >
             {checkingAll
               ? t("downloads.checkingUpdates")
@@ -152,14 +152,14 @@ export default function DownloadList() {
           </button>
           <Link
             to="/downloads/add"
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            className="btn btn-primary"
           >
             {t("downloads.new")}
           </Link>
         </div>
       }
     >
-      <div className="mb-4 flex gap-2 flex-wrap">
+      <div className="seg mb-4">
         {(
           [
             "all",
@@ -175,11 +175,8 @@ export default function DownloadList() {
           <button
             key={status}
             onClick={() => setFilter(status)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-              filter === status
-                ? "bg-blue-600 text-white"
-                : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
-            }`}
+            className="seg-btn"
+            data-active={filter === status ? "true" : "false"}
           >
             {t(`downloads.status.${status}`)}
             {status !== "all" && (
@@ -191,19 +188,19 @@ export default function DownloadList() {
         ))}
       </div>
 
-      <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-700 dark:text-amber-400">
+      <div className="alert mb-4" data-tone="warning">
         {t("downloads.warning")}
       </div>
 
       {loading && tasks.length === 0 ? (
-        <div className="text-center text-gray-500 dark:text-gray-400 py-12">
+        <div className="py-12 text-center text-muted">
           {t("downloads.loading")}
         </div>
       ) : sortedTasks.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 px-4 my-4 bg-gray-50 dark:bg-gray-900/30 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-2xl">
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-full shadow-sm mb-4 border border-gray-100 dark:border-gray-700">
+        <div className="empty-state my-4">
+          <div className="empty-state-icon">
             <svg
-              className="w-12 h-12 text-blue-500 dark:text-blue-400"
+              className="w-8 h-8"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -216,14 +213,14 @@ export default function DownloadList() {
               />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 text-center">
+          <h3 className="mb-2 text-[15px] font-semibold text-ink">
             {filter === "all"
               ? t("downloads.emptyAll")
               : t("downloads.emptyFilter", {
                   status: t(`downloads.status.${filter}`),
                 })}
           </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 text-center max-w-sm">
+          <p className="mb-6 max-w-sm text-[13px] text-muted">
             {filter === "all"
               ? t("downloads.emptyAllDesc")
               : t("downloads.emptyFilterDesc")}
@@ -231,7 +228,7 @@ export default function DownloadList() {
           {filter === "all" && (
             <Link
               to="/search"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 hover:shadow-md transition-all active:scale-95"
+              className="btn btn-primary"
             >
               <svg
                 className="w-4 h-4"
@@ -270,16 +267,16 @@ export default function DownloadList() {
         title={t("downloads.checkingUpdates")}
       >
         <div className="space-y-4">
-          <div className="flex justify-center text-blue-600 dark:text-blue-400">
+          <div className="flex justify-center text-accent">
             <Spinner />
           </div>
           <div className="text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+            <p className="truncate text-[13px] text-muted">
               {checkProgress.appName
                 ? `${t("downloads.checkingApp")}${checkProgress.appName}`
                 : "..."}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-mono">
+            <p className="mt-1 font-mono text-[12px] text-muted">
               {checkProgress.current} / {checkProgress.total}
             </p>
           </div>
@@ -290,13 +287,13 @@ export default function DownloadList() {
                 : 0
             }
           />
-          <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
+          <p className="text-center text-[12px] text-subtle">
             {t("downloads.checkUpdatesDesc")}
           </p>
           <div className="flex justify-center">
             <button
               onClick={handleCancelCheck}
-              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              className="btn btn-ghost"
             >
               {t("settings.data.cancel")}
             </button>

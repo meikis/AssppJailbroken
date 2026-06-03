@@ -16,7 +16,7 @@ export default function PageContainer({
   const location = useLocation();
   const clearSearch = useSearch((state) => state.clear);
 
-  // 监听路由变化，如果当前路径不在 /search 下，则清空之前的搜索内容
+  // Clear stale search state when leaving the search workflow.
   useEffect(() => {
     if (!location.pathname.startsWith("/search")) {
       clearSearch();
@@ -24,12 +24,12 @@ export default function PageContainer({
   }, [location.pathname, clearSearch]);
 
   return (
-    <div className="flex-1 overflow-y-auto pb-20 md:pb-0 bg-gray-50 dark:bg-gray-950 transition-colors duration-200">
-      <div className="max-w-5xl mx-auto px-4 py-6 sm:px-6">
+    <div className="flex-1 overflow-y-auto bg-bg pb-20 md:pb-0">
+      <div className="max-w-5xl mx-auto px-4 py-6 sm:px-6 anim-in">
         {(title || action) && (
-          <div className="flex items-center justify-between mb-6">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
             {title && (
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h1 className="page-title">
                 {title}
               </h1>
             )}
