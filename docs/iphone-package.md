@@ -72,6 +72,10 @@ THEOS=/Users/libr/theos THEOS_DEVICE_IP=<device-host> make install
 
 On Dopamine/rootless, the executable is staged by Theos under the package install prefix and signed with `ldid`.
 
+## CI
+
+`.github/workflows/deb.yml` builds the same rootless iOS package on GitHub Actions. The workflow runs on macOS, installs Theos, checks out the sibling `lbr77/unfair` dependency at `../unfair`, calls `make build`, inspects the generated package, and uploads `wiki.qaq.unfaird_*_iphoneos-arm64.deb` as a workflow artifact.
+
 ## Environment
 
 | Variable | Default | Purpose |
