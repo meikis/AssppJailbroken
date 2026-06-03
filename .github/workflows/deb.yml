@@ -28,7 +28,7 @@ env:
 jobs:
   build:
     name: Build rootless iOS deb
-    runs-on: macos-latest
+    runs-on: macos-26
     permissions:
       contents: read
 
@@ -51,6 +51,18 @@ jobs:
           node-version: '22'
           cache: npm
           cache-dependency-path: AssppWeb/frontend/package-lock.json
+
+      - name: Select Xcode 26
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcode_path="$(find /Applications -maxdepth 1 -name 'Xcode_26*.app' -print | sort | tail -n 1)"
+          if [[ -z "$xcode_path" ]]; then
+            xcode_path="/Applications/Xcode.app"
+          fi
+          sudo xcode-select -s "$xcode_path/Contents/Developer"
+          xcodebuild -version
+          swift --version
 
       - name: Cache Theos
         uses: actions/cache@v5
