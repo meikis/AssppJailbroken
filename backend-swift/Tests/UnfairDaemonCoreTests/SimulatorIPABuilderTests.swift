@@ -69,6 +69,30 @@ final class SimulatorIPABuilderTests: XCTestCase {
         XCTAssertEqual(data.uint32LE(at: 56), 0x1d)
     }
 
+    func testEnsureSimulatorIpaLogsCachedOutput() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("asspp-simulator-cache-test-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: directory)
+        }
+
+        let sourceURL = directory.appendingPathComponent("Source.ipa")
+        let outputURL = SimulatorIPABuilder.simulatorIpaURL(for: sourceURL)
+        try Data("source".utf8).write(to: sourceURL)
+        try Data("cached".utf8).write(to: outputURL)
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1)], ofItemAtPath: sourceURL.path)
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 2)], ofItemAtPath: outputURL.path)
+
+        var logs: [String] = []
+        let result = try SimulatorIPABuilder.ensureSimulatorIpa(sourceURL: sourceURL) { message in
+            logs.append(message)
+        }
+
+        XCTAssertEqual(result.path, outputURL.path)
+        XCTAssertEqual(logs, ["using cached simulator IPA"])
+    }
+
     private func minimalMachO64() -> Data {
         var data = Data()
         data.appendUInt32LE(0xfeedfacf) // magic

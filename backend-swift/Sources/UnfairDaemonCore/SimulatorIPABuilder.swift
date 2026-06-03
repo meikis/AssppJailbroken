@@ -40,13 +40,15 @@ enum SimulatorIPABuilder {
             .appendingPathComponent("\(baseName).simulator.\(fileExtension)")
     }
 
-    static func ensureSimulatorIpa(sourceURL: URL) throws -> URL {
+    static func ensureSimulatorIpa(sourceURL: URL, log: (String) -> Void = { _ in }) throws -> URL {
         let outputURL = simulatorIpaURL(for: sourceURL)
         if try isFresh(outputURL: outputURL, sourceURL: sourceURL) {
+            log("using cached simulator IPA")
             return outputURL
         }
 
-        try buildSimulatorIpa(sourceURL: sourceURL, outputURL: outputURL)
+        log("building simulator IPA")
+        try buildSimulatorIpa(sourceURL: sourceURL, outputURL: outputURL, log: log)
         return outputURL
     }
 
@@ -72,7 +74,7 @@ enum SimulatorIPABuilder {
         return outputDate >= sourceDate
     }
 
-    private static func buildSimulatorIpa(sourceURL: URL, outputURL: URL) throws {
+    private static func buildSimulatorIpa(sourceURL: URL, outputURL: URL, log: (String) -> Void) throws {
         let temporaryRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent("asspp-simulator-\(UUID().uuidString)", isDirectory: true)
         let extractionURL = temporaryRoot.appendingPathComponent("extracted", isDirectory: true)
@@ -86,21 +88,27 @@ enum SimulatorIPABuilder {
             try? FileManager.default.removeItem(at: outputTempURL)
         }
 
+        log("extracting IPA payload")
         try FileManager.default.unzipItem(at: sourceURL, to: extractionURL, skipCRC32: true)
 
         let appURL = try singlePayloadAppDirectory(in: extractionURL)
+        log("preparing app bundle \(appURL.lastPathComponent)")
         try prepareAppBundle(appURL)
 
+        log("patching Mach-O load commands")
         let patchedFiles = try patchMachOFiles(in: appURL)
         guard patchedFiles.isEmpty == false else {
             throw Abort(.internalServerError, reason: "No Mach-O files with LC_BUILD_VERSION or LC_VERSION_MIN_IPHONEOS found in IPA")
         }
+        log("patched \(patchedFiles.count) Mach-O file\(patchedFiles.count == 1 ? "" : "s")")
 
         let ldidPath = try resolveLdidPath()
         for fileURL in patchedFiles {
+            log("signing \(fileURL.lastPathComponent)")
             try signMachOFile(fileURL, ldidPath: ldidPath, workingDirectory: temporaryRoot)
         }
 
+        log("packaging simulator IPA")
         try? FileManager.default.removeItem(at: outputTempURL)
         try FileManager.default.zipItem(
             at: extractionURL,
@@ -110,6 +118,7 @@ enum SimulatorIPABuilder {
         )
         try? FileManager.default.removeItem(at: outputURL)
         try FileManager.default.moveItem(at: outputTempURL, to: outputURL)
+        log("simulator IPA packaged")
     }
 
     private static func singlePayloadAppDirectory(in extractionURL: URL) throws -> URL {

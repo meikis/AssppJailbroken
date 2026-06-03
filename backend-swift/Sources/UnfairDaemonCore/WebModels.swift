@@ -38,6 +38,7 @@ struct DownloadTask: Content {
     var progress: Int
     var speed: String
     var error: String?
+    var logs: [String]?
     var filePath: String?
     var createdAt: String
     var hasFile: Bool?
@@ -108,4 +109,3 @@ struct ITunesItem: Decodable {
         )
     }
 }
-

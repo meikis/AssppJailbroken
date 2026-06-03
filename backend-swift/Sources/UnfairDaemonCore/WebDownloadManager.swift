@@ -11,6 +11,8 @@ final class WebDownloadManager {
         }
     }
 
+    private static let maxTaskLogLines = 200
+
     private let config: WebConfig
     private let lock = NSLock()
     private let queue = DispatchQueue(label: "wiki.qaq.unfaird.assppweb-downloads", attributes: .concurrent)
@@ -107,17 +109,20 @@ final class WebDownloadManager {
             progress: 0,
             speed: "0 B/s",
             error: nil,
+            logs: nil,
             filePath: nil,
             createdAt: currentTimestampString(),
             hasFile: nil
         )
+        var loggedTask = task
+        appendLogLocked(to: &loggedTask, phase: "download", message: "queued \(request.software.name) \(request.software.version)")
 
         lock.lock()
-        tasks[id] = TaskRecord(task: task)
+        tasks[id] = TaskRecord(task: loggedTask)
         lock.unlock()
 
         startDownload(id: id)
-        return self.task(id: id) ?? task
+        return self.task(id: id) ?? loggedTask
     }
 
     func deleteTask(id: String) -> Bool {
@@ -148,6 +153,7 @@ final class WebDownloadManager {
         record.sessionTask = nil
         record.task.status = DownloadStatus.paused.rawValue
         record.task.speed = "0 B/s"
+        appendLogLocked(to: &record.task, phase: "download", message: "paused")
         lock.unlock()
         persistTasks()
         return true
@@ -177,6 +183,34 @@ final class WebDownloadManager {
         return true
     }
 
+    func ensureSimulatorIpa(taskID id: String) throws -> URL {
+        lock.lock()
+        guard let task = tasks[id]?.task,
+              task.status == DownloadStatus.completed.rawValue,
+              let filePath = task.filePath,
+              fileExists(filePath)
+        else {
+            lock.unlock()
+            throw Abort(.notFound, reason: "Package not found")
+        }
+        let sourceURL = URL(fileURLWithPath: filePath)
+        lock.unlock()
+
+        appendLog(id: id, phase: "patch-sim", message: "requested simulator IPA")
+        do {
+            let simulatorURL = try SimulatorIPABuilder.ensureSimulatorIpa(sourceURL: sourceURL) { [weak self] message in
+                self?.appendLog(id: id, phase: "patch-sim", message: message)
+            }
+            appendLog(id: id, phase: "patch-sim", message: "ready \(simulatorURL.lastPathComponent)")
+            persistTasks()
+            return simulatorURL
+        } catch {
+            appendLog(id: id, phase: "patch-sim", message: "failed: \(errorDescription(error))")
+            persistTasks()
+            throw error
+        }
+    }
+
     var packagesDirectory: URL {
         config.dataDirectory.appendingPathComponent("packages", isDirectory: true)
     }
@@ -203,9 +237,11 @@ final class WebDownloadManager {
             record.task.speed = "0 B/s"
             record.task.error = nil
             record.task.filePath = try taskFileURL(for: record.task).path
+            appendLogLocked(to: &record.task, phase: "download", message: "starting IPA download")
         } catch {
             record.task.status = DownloadStatus.failed.rawValue
             record.task.error = String(describing: error)
+            appendLogLocked(to: &record.task, phase: "download", message: "failed: \(errorDescription(error))")
             lock.unlock()
             persistTasks()
             return
@@ -232,9 +268,11 @@ final class WebDownloadManager {
                         task.status = DownloadStatus.injecting.rawValue
                         task.progress = 100
                         task.speed = "0 B/s"
+                        self.appendLogLocked(to: &task, phase: "download", message: "injecting SINF and iTunesMetadata")
                     }
                     self.persistTasks()
                     try SinfInjector.inject(sinfs: sinfs, ipaURL: URL(fileURLWithPath: filePath), iTunesMetadata: iTunesMetadata)
+                    self.appendLog(id: id, phase: "download", message: "SINF injection complete")
                 }
 
                 stage = "Decrypt"
@@ -242,6 +280,7 @@ final class WebDownloadManager {
                     task.status = DownloadStatus.decrypting.rawValue
                     task.progress = 100
                     task.speed = "0 B/s"
+                    self.appendLogLocked(to: &task, phase: "decrypt", message: "running unfaird package processor")
                 }
                 self.persistTasks()
                 try self.decryptInPlace(URL(fileURLWithPath: filePath), taskID: id)
@@ -254,6 +293,7 @@ final class WebDownloadManager {
                     task.sinfs = nil
                     task.iTunesMetadata = nil
                     task.sessionFieldsCleared()
+                    self.appendLogLocked(to: &task, phase: "download", message: "completed")
                 }
                 self.persistTasks()
             } catch {
@@ -261,11 +301,14 @@ final class WebDownloadManager {
                     self.persistTasks()
                     return
                 }
+                let failureMessage = "\(stage) failed: \(self.errorDescription(error))"
+                let failurePhase = self.logPhase(forStage: stage)
                 self.updateTask(id: id) { task in
                     task.status = DownloadStatus.failed.rawValue
-                    task.error = "\(stage) failed: \(self.errorDescription(error))"
+                    task.error = failureMessage
                     task.speed = "0 B/s"
                     task.sessionFieldsCleared()
+                    self.appendLogLocked(to: &task, phase: failurePhase, message: "failed: \(self.errorDescription(error))")
                 }
                 self.persistTasks()
             }
@@ -301,11 +344,14 @@ final class WebDownloadManager {
         lock.lock()
         tasks[taskID]?.sessionTask = task
         lock.unlock()
+        defer {
+            lock.lock()
+            tasks[taskID]?.sessionTask = nil
+            lock.unlock()
+        }
         task.resume()
         try delegate.wait()
-        lock.lock()
-        tasks[taskID]?.sessionTask = nil
-        lock.unlock()
+        appendLog(id: taskID, phase: "download", message: "download complete")
     }
 
     private func decryptInPlace(_ ipaURL: URL, taskID: String) throws {
@@ -336,24 +382,35 @@ final class WebDownloadManager {
             ],
             workingDirectory: jobDirectory,
             sandboxProfileURL: sandboxProfileURL,
-            timeoutSeconds: WebConfig.decryptTimeoutSeconds
+            timeoutSeconds: WebConfig.decryptTimeoutSeconds,
+            onOutputLine: { [weak self] stream, line in
+                self?.appendLog(
+                    id: taskID,
+                    phase: "decrypt",
+                    message: "\(self?.outputStreamLabel(stream) ?? "output"): \(line)"
+                )
+            }
         )
 
         guard result.exitCode == 0, fileExists(outputURL.path) else {
             let message = result.stderrString.isEmpty ? "decrypt runner exited with code \(result.exitCode)" : result.stderrString
+            appendLog(id: taskID, phase: "decrypt", message: "failed: \(message)")
             throw Abort(.internalServerError, reason: message)
         }
 
         try replacePackageFile(at: ipaURL, with: outputURL)
+        appendLog(id: taskID, phase: "decrypt", message: "complete")
     }
 
     private func reportProgress(id: String, downloaded: Int64, total: Int64, elapsed: TimeInterval, delta: Int64) {
         let speed = elapsed > 0 && delta > 0 ? formatSpeed(bytesPerSecond: Double(delta) / elapsed) : "0 B/s"
         let progress = total > 0 ? Int(Double(downloaded) / Double(total) * 100) : 0
-        updateTask(id: id) { task in
-            task.progress = progress
-            task.speed = speed
+        lock.lock()
+        if let record = tasks[id] {
+            record.task.progress = progress
+            record.task.speed = speed
         }
+        lock.unlock()
     }
 
     private func updateTask(id: String, _ update: (inout DownloadTask) -> Void) {
@@ -362,6 +419,50 @@ final class WebDownloadManager {
             update(&record.task)
         }
         lock.unlock()
+    }
+
+    private func appendLog(id: String, phase: String, message: String) {
+        lock.lock()
+        if let record = tasks[id] {
+            appendLogLocked(to: &record.task, phase: phase, message: message)
+        }
+        lock.unlock()
+    }
+
+    private func appendLogLocked(to task: inout DownloadTask, phase: String, message: String) {
+        var logs = task.logs ?? []
+        logs.append("[\(logTimestamp())] \(phase): \(message)")
+        if logs.count > Self.maxTaskLogLines {
+            logs = Array(logs.suffix(Self.maxTaskLogLines))
+        }
+        task.logs = logs
+    }
+
+    private func logTimestamp() -> String {
+        let components = Calendar.current.dateComponents([.hour, .minute, .second, .nanosecond], from: Date())
+        return String(
+            format: "%02d:%02d:%02d.%03d",
+            components.hour!,
+            components.minute!,
+            components.second!,
+            components.nanosecond! / 1_000_000
+        )
+    }
+
+    private func logPhase(forStage stage: String) -> String {
+        if stage.lowercased().contains("decrypt") {
+            return "decrypt"
+        }
+        return "download"
+    }
+
+    private func outputStreamLabel(_ stream: PosixSpawn.OutputStream) -> String {
+        switch stream {
+        case .stdout:
+            return "stdout"
+        case .stderr:
+            return "stderr"
+        }
     }
 
     private func isPaused(id: String) -> Bool {
@@ -413,6 +514,7 @@ final class WebDownloadManager {
             if task.status == DownloadStatus.completed.rawValue {
                 task.status = DownloadStatus.failed.rawValue
                 task.error = "Package file is missing."
+                appendLogLocked(to: &task, phase: "download", message: "package file is missing")
                 tasks[task.id] = TaskRecord(task: task)
                 needsPersist = true
                 continue
@@ -427,6 +529,7 @@ final class WebDownloadManager {
                 let previousStatus = task.status
                 task.status = DownloadStatus.failed.rawValue
                 task.error = "Task interrupted while \(previousStatus)."
+                appendLogLocked(to: &task, phase: logPhase(forStage: previousStatus.capitalized), message: "interrupted while \(previousStatus)")
                 tasks[task.id] = TaskRecord(task: task)
                 needsPersist = true
             }

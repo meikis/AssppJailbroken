@@ -118,7 +118,7 @@ After authentication, Apple returns a `pod` header:
 - Package ID is `wiki.qaq.unfaird`; launchd label is `wiki.qaq.unfaird`; default port is `8080`.
 - `backend-swift/Package.swift` depends on sibling `../../unfair` when built from this repository.
 - Root `make build` is the single production packaging entry: it builds the frontend, builds the Swift iOS backend, and emits the rootless deb.
-- Root `make install` depends on `make build` and installs the generated deb on `DEVICE_HOST`.
+- Root `make install` depends on `make build` and installs the generated deb on `DEVICE_HOST` or Theos device variables (`THEOS_DEVICE_IP`, `THEOS_DEVICE_USER`, `THEOS_DEVICE_PORT`).
 
 ### Backend Shared Utilities
 

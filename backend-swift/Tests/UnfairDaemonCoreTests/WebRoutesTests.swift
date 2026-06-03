@@ -60,6 +60,24 @@ final class WebRoutesTests: XCTestCase {
             XCTAssertTrue(response.body.string.contains("account"))
         }
     }
+
+    func testAccessTokenQueryAuthorizesBrowserDownloads() throws {
+        let context = try WebTestContext(accessPasswordHash: "token")
+        defer { context.cleanup() }
+
+        let app = Application(.testing)
+        defer { app.shutdown() }
+        let manager = try WebDownloadManager(config: context.config)
+        try webRoutes(app, config: context.config, manager: manager)
+
+        try app.testable().test(.GET, "/api/settings") { response in
+            XCTAssertEqual(response.status, .unauthorized)
+        }
+
+        try app.testable().test(.GET, "/api/settings?accessToken=token") { response in
+            XCTAssertEqual(response.status, .ok)
+        }
+    }
 }
 
 private final class WebTestContext {
@@ -68,7 +86,7 @@ private final class WebTestContext {
     let publicDirectory: URL
     let config: WebConfig
 
-    init() throws {
+    init(accessPasswordHash: String = "") throws {
         root = FileManager.default.temporaryDirectory
             .appendingPathComponent("unfaird-web-tests-\(UUID().uuidString)", isDirectory: true)
         dataDirectory = root.appendingPathComponent("data", isDirectory: true)
@@ -87,7 +105,7 @@ private final class WebTestContext {
             autoCleanupMaxMB: 0,
             maxDownloadMB: 0,
             downloadThreads: 8,
-            accessPasswordHash: ""
+            accessPasswordHash: accessPasswordHash
         )
     }
 

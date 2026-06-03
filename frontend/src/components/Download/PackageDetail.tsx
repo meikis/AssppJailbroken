@@ -7,39 +7,33 @@ import AppIcon from "../common/AppIcon";
 import Badge from "../common/Badge";
 import ProgressBar from "../common/ProgressBar";
 import Modal from "../common/Modal";
+import DownloadLog from "./DownloadLog";
 import { useDownloads } from "../../hooks/useDownloads";
 import { useAccounts } from "../../hooks/useAccounts";
 import { useDownloadAction } from "../../hooks/useDownloadAction";
 import { useSettingsStore } from "../../store/settings";
 import { useToastStore } from "../../store/toast";
 import { getInstallInfo } from "../../api/install";
-import { authHeaders } from "../../api/client";
+import { getAccessToken } from "../Auth/PasswordGate";
 import { listVersions } from "../../api/apple";
 import { lookupApp } from "../../api/search";
 import { getAccountOptionLabel } from "../../utils/accountDisplay";
-import { getErrorMessage } from "../../utils/error";
 import { getAccountContext } from "../../utils/toast";
 import { isNewerVersion } from "../../utils/version";
 import { storeIdToCountry } from "../../apple/config";
 import type { Software } from "../../types";
 
-async function responseErrorMessage(res: Response): Promise<string> {
-  const text = await res.text();
-  if (!text) return "Download failed";
-  try {
-    const parsed = JSON.parse(text) as { error?: unknown };
-    if (typeof parsed.error === "string") return parsed.error;
-  } catch {
-    return text;
-  }
-  return text;
-}
-
 export default function PackageDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { tasks, deleteDownload, pauseDownload, resumeDownload, hashToEmail } =
-    useDownloads();
+  const {
+    tasks,
+    fetchTasks,
+    deleteDownload,
+    pauseDownload,
+    resumeDownload,
+    hashToEmail,
+  } = useDownloads();
   const { t } = useTranslation();
   const addToast = useToastStore((s) => s.addToast);
   const { accounts, updateAccount } = useAccounts();
@@ -184,9 +178,19 @@ export default function PackageDetail() {
     }
   }
 
-  async function handleDownloadIpa(target: "device" | "simulator") {
+  function packageDownloadURL(target: "device" | "simulator") {
     const endpoint = target === "simulator" ? "simulator-file" : "file";
-    const fileSuffix = target === "simulator" ? "_Simulator" : "";
+    const params = new URLSearchParams({
+      accountHash: packageTask.accountHash,
+    });
+    const accessToken = getAccessToken();
+    if (accessToken) {
+      params.set("accessToken", accessToken);
+    }
+    return `/api/packages/${packageTask.id}/${endpoint}?${params}`;
+  }
+
+  function handleDownloadIpa(target: "device" | "simulator") {
     const titleKey =
       target === "simulator"
         ? "toast.title.downloadSimulatorIpaStarted"
@@ -194,29 +198,22 @@ export default function PackageDetail() {
 
     setDownloadAction(target);
     toastAction(titleKey);
-    try {
-      const res = await fetch(
-        `/api/packages/${packageTask.id}/${endpoint}?accountHash=${encodeURIComponent(packageTask.accountHash)}`,
-        { headers: authHeaders() },
-      );
-      if (!res.ok) throw new Error(await responseErrorMessage(res));
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${packageTask.software.name}_${packageTask.software.version}${fileSuffix}.ipa`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      addToast(
-        getErrorMessage(error, t("downloads.package.downloadFailed")),
-        "error",
-      );
-    } finally {
-      setDownloadAction(null);
+    if (target === "simulator") {
+      void fetchTasks();
+      const refreshInterval = window.setInterval(() => {
+        void fetchTasks();
+      }, 1000);
+      window.setTimeout(() => {
+        window.clearInterval(refreshInterval);
+        void fetchTasks();
+        setDownloadAction(null);
+      }, 120000);
+      return;
     }
+
+    window.setTimeout(() => {
+      setDownloadAction(null);
+    }, 1000);
   }
 
   return (
@@ -256,6 +253,12 @@ export default function PackageDetail() {
 
         {task.error && (
           <p className="alert" data-tone="error">{task.error}</p>
+        )}
+
+        {((task.logs?.length ?? 0) > 0 ||
+          isActive ||
+          downloadAction === "simulator") && (
+          <DownloadLog lines={task.logs} />
         )}
 
         <div className="card card-pad">
@@ -341,20 +344,20 @@ export default function PackageDetail() {
                     </div>
                   </>
                 )}
-                <button
+                <a
+                  href={packageDownloadURL("device")}
                   onClick={() => handleDownloadIpa("device")}
-                  disabled={downloadAction !== null}
                   className="btn btn-primary"
                 >
                   {t("downloads.package.downloadIpa")}
-                </button>
-                <button
+                </a>
+                <a
+                  href={packageDownloadURL("simulator")}
                   onClick={() => handleDownloadIpa("simulator")}
-                  disabled={downloadAction !== null}
                   className="btn btn-ghost"
                 >
                   {t("downloads.package.downloadSimulatorIpa")}
-                </button>
+                </a>
               </>
             )}
             {canPause && (

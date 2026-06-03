@@ -1,4 +1,5 @@
 import Darwin
+import Dispatch
 import Foundation
 import Vapor
 
@@ -17,15 +18,28 @@ struct PosixSpawnResult {
 }
 
 enum PosixSpawn {
+    enum OutputStream {
+        case stdout
+        case stderr
+    }
+
     static func run(
         executablePath: String,
         arguments: [String],
         workingDirectory: URL,
         sandboxProfileURL: URL? = nil,
-        timeoutSeconds: Int? = nil
+        timeoutSeconds: Int? = nil,
+        onOutputLine: ((OutputStream, String) -> Void)? = nil
     ) throws -> PosixSpawnResult {
-        let stdoutURL = workingDirectory.appendingPathComponent("stdout.log")
-        let stderrURL = workingDirectory.appendingPathComponent("stderr.log")
+        var stdoutPipe = try makePipe(operation: "stdout pipe")
+        var stderrPipe = try makePipe(operation: "stderr pipe")
+        defer {
+            closeIfOpen(&stdoutPipe.read)
+            closeIfOpen(&stdoutPipe.write)
+            closeIfOpen(&stderrPipe.read)
+            closeIfOpen(&stderrPipe.write)
+        }
+
         let launch = launchCommand(
             executablePath: executablePath,
             arguments: arguments,
@@ -39,8 +53,12 @@ enum PosixSpawn {
         #if !os(iOS)
         try throwIfFailed(posix_spawn_file_actions_addchdir_np(&actions, workingDirectory.path), operation: "posix_spawn_file_actions_addchdir_np")
         #endif
-        try throwIfFailed(posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, stdoutURL.path, O_WRONLY | O_CREAT | O_TRUNC, 0o644), operation: "stdout redirect")
-        try throwIfFailed(posix_spawn_file_actions_addopen(&actions, STDERR_FILENO, stderrURL.path, O_WRONLY | O_CREAT | O_TRUNC, 0o644), operation: "stderr redirect")
+        try throwIfFailed(posix_spawn_file_actions_adddup2(&actions, stdoutPipe.write, STDOUT_FILENO), operation: "stdout redirect")
+        try throwIfFailed(posix_spawn_file_actions_adddup2(&actions, stderrPipe.write, STDERR_FILENO), operation: "stderr redirect")
+        try throwIfFailed(posix_spawn_file_actions_addclose(&actions, stdoutPipe.read), operation: "stdout read close")
+        try throwIfFailed(posix_spawn_file_actions_addclose(&actions, stderrPipe.read), operation: "stderr read close")
+        try throwIfFailed(posix_spawn_file_actions_addclose(&actions, stdoutPipe.write), operation: "stdout write close")
+        try throwIfFailed(posix_spawn_file_actions_addclose(&actions, stderrPipe.write), operation: "stderr write close")
 
         var attributes: posix_spawnattr_t?
         try throwIfFailed(posix_spawnattr_init(&attributes), operation: "posix_spawnattr_init")
@@ -72,10 +90,58 @@ enum PosixSpawn {
         try throwIfFailed(spawnStatus, operation: "posix_spawn \(launch.executablePath)")
         #endif
 
-        let waitStatus = try wait(for: pid, timeoutSeconds: timeoutSeconds)
+        closeIfOpen(&stdoutPipe.write)
+        closeIfOpen(&stderrPipe.write)
 
-        let stdout = try Data(contentsOf: stdoutURL)
-        let stderr = try Data(contentsOf: stderrURL)
+        let group = DispatchGroup()
+        let outputQueue = DispatchQueue.global(qos: .utility)
+        var stdout = Data()
+        var stderr = Data()
+        var stdoutError: Error?
+        var stderrError: Error?
+
+        group.enter()
+        outputQueue.async {
+            do {
+                stdout = try readOutputPipe(stdoutPipe.read, stream: .stdout, onOutputLine: onOutputLine)
+            } catch {
+                stdoutError = error
+            }
+            group.leave()
+        }
+
+        group.enter()
+        outputQueue.async {
+            do {
+                stderr = try readOutputPipe(stderrPipe.read, stream: .stderr, onOutputLine: onOutputLine)
+            } catch {
+                stderrError = error
+            }
+            group.leave()
+        }
+
+        let waitStatus: Int32
+        var waitError: Error?
+        do {
+            waitStatus = try wait(for: pid, timeoutSeconds: timeoutSeconds)
+        } catch {
+            waitError = error
+            waitStatus = 0
+        }
+
+        group.wait()
+        closeIfOpen(&stdoutPipe.read)
+        closeIfOpen(&stderrPipe.read)
+
+        if let waitError = waitError {
+            throw waitError
+        }
+        if let stdoutError = stdoutError {
+            throw stdoutError
+        }
+        if let stderrError = stderrError {
+            throw stderrError
+        }
         return PosixSpawnResult(exitCode: exitCode(from: waitStatus), stdout: stdout, stderr: stderr)
     }
 
@@ -113,6 +179,90 @@ enum PosixSpawn {
         guard status == 0 else {
             throw Abort(.internalServerError, reason: "\(operation) failed: \(String(cString: strerror(status)))")
         }
+    }
+
+    private static func throwIfErrnoFailed(_ status: Int32, operation: String) throws {
+        guard status == 0 else {
+            throw Abort(.internalServerError, reason: "\(operation) failed: \(String(cString: strerror(errno)))")
+        }
+    }
+
+    private static func makePipe(operation: String) throws -> (read: Int32, write: Int32) {
+        var fds = [Int32](repeating: -1, count: 2)
+        let status = fds.withUnsafeMutableBufferPointer { buffer in
+            pipe(buffer.baseAddress!)
+        }
+        try throwIfErrnoFailed(status, operation: operation)
+        return (fds[0], fds[1])
+    }
+
+    private static func closeIfOpen(_ fd: inout Int32) {
+        guard fd >= 0 else {
+            return
+        }
+        close(fd)
+        fd = -1
+    }
+
+    private static func readOutputPipe(
+        _ fd: Int32,
+        stream: OutputStream,
+        onOutputLine: ((OutputStream, String) -> Void)?
+    ) throws -> Data {
+        var output = Data()
+        var pendingLine = ""
+        var buffer = [UInt8](repeating: 0, count: 4096)
+
+        while true {
+            let count = Darwin.read(fd, &buffer, buffer.count)
+            if count > 0 {
+                let chunk = Data(buffer[0..<count])
+                output.append(chunk)
+                emitCompleteLines(from: chunk, pendingLine: &pendingLine, stream: stream, onOutputLine: onOutputLine)
+                continue
+            }
+            if count == 0 {
+                emitPendingLine(pendingLine, stream: stream, onOutputLine: onOutputLine)
+                return output
+            }
+            if errno == EINTR {
+                continue
+            }
+            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+        }
+    }
+
+    private static func emitCompleteLines(
+        from chunk: Data,
+        pendingLine: inout String,
+        stream: OutputStream,
+        onOutputLine: ((OutputStream, String) -> Void)?
+    ) {
+        guard let onOutputLine = onOutputLine else {
+            return
+        }
+
+        pendingLine += String(decoding: chunk, as: UTF8.self)
+        let parts = pendingLine.components(separatedBy: .newlines)
+        let endedWithNewline = pendingLine.unicodeScalars.last.map { CharacterSet.newlines.contains($0) } ?? false
+        let completeLines = endedWithNewline ? parts : Array(parts.dropLast())
+
+        for line in completeLines {
+            emitPendingLine(line, stream: stream, onOutputLine: onOutputLine)
+        }
+        pendingLine = endedWithNewline ? "" : parts.last ?? ""
+    }
+
+    private static func emitPendingLine(
+        _ line: String,
+        stream: OutputStream,
+        onOutputLine: ((OutputStream, String) -> Void)?
+    ) {
+        let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.isEmpty == false else {
+            return
+        }
+        onOutputLine?(stream, trimmed)
     }
 
     private static func wait(for pid: pid_t, timeoutSeconds: Int?) throws -> Int32 {

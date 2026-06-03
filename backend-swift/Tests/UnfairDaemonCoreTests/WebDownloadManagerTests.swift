@@ -36,11 +36,13 @@ final class WebDownloadManagerTests: XCTestCase {
         XCTAssertEqual(tasks[0].progress, 100)
         XCTAssertEqual(tasks[0].error, "Task interrupted while decrypting.")
         XCTAssertEqual(tasks[0].hasFile, true)
+        XCTAssertTrue(tasks[0].logs?.last?.contains("decrypt: interrupted while decrypting") == true)
 
         let persisted = try context.readTasks()
         XCTAssertEqual(persisted.count, 1)
         XCTAssertEqual(persisted[0].status, "failed")
         XCTAssertEqual(persisted[0].error, "Task interrupted while decrypting.")
+        XCTAssertTrue(persisted[0].logs?.last?.contains("decrypt: interrupted while decrypting") == true)
     }
 
     func testMarksCompletedTaskWithMissingFileAsFailedOnLoad() throws {
@@ -57,11 +59,13 @@ final class WebDownloadManagerTests: XCTestCase {
         XCTAssertEqual(tasks[0].status, "failed")
         XCTAssertEqual(tasks[0].error, "Package file is missing.")
         XCTAssertEqual(tasks[0].hasFile, false)
+        XCTAssertTrue(tasks[0].logs?.last?.contains("download: package file is missing") == true)
 
         let persisted = try context.readTasks()
         XCTAssertEqual(persisted.count, 1)
         XCTAssertEqual(persisted[0].status, "failed")
         XCTAssertEqual(persisted[0].error, "Package file is missing.")
+        XCTAssertTrue(persisted[0].logs?.last?.contains("download: package file is missing") == true)
     }
 
     func testRemovesEmptyOrphanPackageDirectoriesOnLoad() throws {

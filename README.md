@@ -18,6 +18,12 @@ with theos installed
 make install DEVICE_HOST=root@<device-host>
 ```
 
+The root install target also accepts Theos device variables:
+
+```bash
+THEOS=/Users/libr/theos THEOS_DEVICE_IP=<device-host> make install
+```
+
 ### Use
 
 visit http://{ip}:8080/ and there's one webui to use.

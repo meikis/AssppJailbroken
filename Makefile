@@ -16,13 +16,27 @@ test:
 	cd frontend && npm test
 
 install: build
-	@if [[ -z "$(DEVICE_HOST)" ]]; then echo "DEVICE_HOST is required" >&2; exit 1; fi
+	@set -euo pipefail; \
 	host="$(DEVICE_HOST)"; \
+	device_ip="$(THEOS_DEVICE_IP)"; \
+	device_user="$(THEOS_DEVICE_USER)"; \
+	device_port="$(THEOS_DEVICE_PORT)"; \
+	if [[ -z "$$device_user" ]]; then device_user="root"; fi; \
+	if [[ -z "$$host" && -n "$$device_ip" ]]; then \
+		if [[ "$$device_ip" == *@* ]]; then host="$$device_ip"; else host="$${device_user}@$$device_ip"; fi; \
+	fi; \
+	if [[ -z "$$host" ]]; then echo "DEVICE_HOST or THEOS_DEVICE_IP is required" >&2; exit 1; fi; \
+	scp_args=(); \
+	ssh_args=(); \
+	if [[ -n "$$device_port" ]]; then scp_args=(-P "$$device_port"); ssh_args=(-p "$$device_port"); fi; \
 	deb=$$(ls -t $(PACKAGE_GLOB) | head -n 1); \
 	remote="/var/tmp/$${deb:t}"; \
-	scp "$$deb" "$$host:$$remote"; \
-	ssh "$$host" "apt install -y '$$remote'"; \
-	curl -fsS "http://$${host#*@}:8080/health"
+	scp "$${scp_args[@]}" "$$deb" "$$host:$$remote"; \
+	ssh "$${ssh_args[@]}" "$$host" "apt install -y '$$remote'"; \
+	health_host="$${host#*@}"; \
+	if [[ "$$health_host" == \[*\]* ]]; then health_host="$${health_host#\[}"; health_host="$${health_host%\]}"; fi; \
+	if [[ "$$health_host" == *:* ]]; then health_host="[$$health_host]"; fi; \
+	curl -fsS "http://$$health_host:8080/health"
 
 clean-package:
 	rm -rf backend-swift/debs backend-swift/.theos backend-swift/.build/ios-release

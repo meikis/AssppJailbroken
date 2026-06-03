@@ -47,7 +47,9 @@ func dataResponse(_ data: Data, contentType: String, status: HTTPResponseStatus 
 }
 
 func requireAccess(_ req: Request, config: WebConfig) throws {
-    guard config.verifyAccessToken(req.headers.first(name: "X-Access-Token")) else {
+    let headerToken = req.headers.first(name: "X-Access-Token")
+    let queryToken = req.query[String.self, at: "accessToken"]
+    guard config.verifyAccessToken(headerToken) || config.verifyAccessToken(queryToken) else {
         throw Abort(.unauthorized, reason: "Unauthorized")
     }
 }

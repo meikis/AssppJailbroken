@@ -49,6 +49,12 @@ Install the generated package on a jailbroken iPhone:
 make install DEVICE_HOST=root@<device-host>
 ```
 
+The same root install target accepts Theos device variables:
+
+```bash
+THEOS=/Users/libr/theos THEOS_DEVICE_IP=<device-host> make install
+```
+
 ## Runtime Layout
 
 ```text
