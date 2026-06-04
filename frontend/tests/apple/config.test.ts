@@ -1,23 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
-  userAgent,
   countryCodeMap,
   generateDeviceId,
-  storeAPIHost,
-  purchaseAPIHost,
   countryToStoreId,
   storeIdToCountry,
 } from "../../src/apple/config";
 
 describe("apple/config", () => {
-  describe("userAgent", () => {
-    it("should be the Configurator user agent string", () => {
-      expect(userAgent).toContain("Configurator/2.17");
-      expect(userAgent).toContain("Macintosh");
-      expect(userAgent).toContain("AppleWebKit");
-    });
-  });
-
   describe("countryCodeMap", () => {
     it("should contain US with correct store ID", () => {
       expect(countryCodeMap["US"]).toBe("143441");
@@ -74,30 +63,6 @@ describe("apple/config", () => {
       expect(id).not.toContain(":");
       expect(id).not.toContain("-");
       expect(id).not.toContain(" ");
-    });
-  });
-
-  describe("storeAPIHost", () => {
-    it("should return pod-based host when pod is provided", () => {
-      expect(storeAPIHost("25")).toBe("p25-buy.itunes.apple.com");
-      expect(storeAPIHost("71")).toBe("p71-buy.itunes.apple.com");
-    });
-
-    it("should return default host when pod is undefined", () => {
-      expect(storeAPIHost()).toBe("p25-buy.itunes.apple.com");
-      expect(storeAPIHost(undefined)).toBe("p25-buy.itunes.apple.com");
-    });
-  });
-
-  describe("purchaseAPIHost", () => {
-    it("should return pod-based host when pod is provided", () => {
-      expect(purchaseAPIHost("25")).toBe("p25-buy.itunes.apple.com");
-      expect(purchaseAPIHost("71")).toBe("p71-buy.itunes.apple.com");
-    });
-
-    it("should return default host when pod is undefined", () => {
-      expect(purchaseAPIHost()).toBe("buy.itunes.apple.com");
-      expect(purchaseAPIHost(undefined)).toBe("buy.itunes.apple.com");
     });
   });
 

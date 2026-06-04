@@ -3,7 +3,6 @@ import { useAccounts } from "./useAccounts";
 import { useToastStore } from "../store/toast";
 import { useDownloadsStore } from "../store/downloads";
 import {
-  authenticate,
   purchaseApp,
   startAppleDownload,
 } from "../api/apple";
@@ -71,25 +70,7 @@ export function useDownloadAction() {
     const ctx = getAccountContext(account, t);
     const appName = app.name;
 
-    // Silently renew the password token before purchasing.
-    // This prevents "token expired" (2034/2042) errors that would
-    // otherwise require the user to manually re-authenticate.
-    let currentAccount = account;
-    try {
-      const renewed = await authenticate(
-        account.email,
-        account.password,
-        undefined,
-        account.cookies,
-        account.deviceIdentifier,
-      );
-      await updateAccount(renewed);
-      currentAccount = renewed;
-    } catch {
-      // Ignore — proceed with existing token
-    }
-
-    const purchasedAccount = await purchaseApp(currentAccount, app);
+    const purchasedAccount = await purchaseApp(account, app);
     await updateAccount(purchasedAccount);
 
     addToast(

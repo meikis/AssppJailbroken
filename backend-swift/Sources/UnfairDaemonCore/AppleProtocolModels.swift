@@ -145,6 +145,12 @@ struct AppleProtocolError: Error {
     }
 }
 
+extension AppleProtocolError {
+    var isPasswordTokenExpired: Bool {
+        code == "2034" || code == "2042" || message == "password token is expired"
+    }
+}
+
 extension Array where Element == WebCookie {
     mutating func merge(_ cookies: [HTTPClient.Cookie]) {
         var valuesByName: [String: WebCookie] = [:]

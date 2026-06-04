@@ -126,6 +126,10 @@ enum AppleProtocolService {
             throw AppleProtocolError(status: .badRequest, message: "purchasing paid apps is not supported")
         }
 
+        return try await purchaseWithTokenRefresh(account: account, software: software)
+    }
+
+    private static func purchaseWithPricingFallback(account: AppleAccount, software: Software) async throws -> AppleAccount {
         do {
             return try await purchaseWithParams(account: account, software: software, pricingParameters: "STDQ")
         } catch let error as AppleProtocolError {
@@ -141,7 +145,11 @@ enum AppleProtocolService {
         software: Software,
         externalVersionId: String?
     ) async throws -> (account: AppleAccount, output: AppleDownloadOutput) {
-        let result = try await downloadProductResponse(account: account, software: software, externalVersionId: externalVersionId)
+        let result = try await downloadProductResponseWithTokenRefresh(
+            account: account,
+            software: software,
+            externalVersionId: externalVersionId
+        )
         let dict = result.dict
 
         guard let items = dict["songList"] as? [[String: Any]], items.isEmpty == false else {
@@ -183,7 +191,7 @@ enum AppleProtocolService {
     }
 
     static func listVersions(account: AppleAccount, software: Software) async throws -> (account: AppleAccount, versions: [String]) {
-        let result = try await downloadProductResponse(account: account, software: software, externalVersionId: nil)
+        let result = try await downloadProductResponseWithTokenRefresh(account: account, software: software, externalVersionId: nil)
         guard let items = result.dict["songList"] as? [[String: Any]], items.isEmpty == false else {
             throw AppleProtocolError(message: "no items in response")
         }
@@ -204,7 +212,11 @@ enum AppleProtocolService {
         software: Software,
         versionId: String
     ) async throws -> (account: AppleAccount, metadata: VersionMetadata) {
-        let result = try await downloadProductResponse(account: account, software: software, externalVersionId: versionId)
+        let result = try await downloadProductResponseWithTokenRefresh(
+            account: account,
+            software: software,
+            externalVersionId: versionId
+        )
         guard let items = result.dict["songList"] as? [[String: Any]], items.isEmpty == false else {
             throw AppleProtocolError(message: "no items in response")
         }
@@ -233,6 +245,42 @@ enum AppleProtocolService {
         cookies: [WebCookie] = []
     ) async throws -> [(String, String)] {
         try await requestHeaders(url: url, headers: headers, cookies: cookies)
+    }
+
+    private static func purchaseWithTokenRefresh(account: AppleAccount, software: Software) async throws -> AppleAccount {
+        do {
+            return try await purchaseWithPricingFallback(account: account, software: software)
+        } catch let error as AppleProtocolError where error.isPasswordTokenExpired {
+            let refreshedAccount = try await refreshAccount(account)
+            return try await purchaseWithPricingFallback(account: refreshedAccount, software: software)
+        }
+    }
+
+    private static func downloadProductResponseWithTokenRefresh(
+        account: AppleAccount,
+        software: Software,
+        externalVersionId: String?
+    ) async throws -> (account: AppleAccount, dict: [String: Any]) {
+        do {
+            return try await downloadProductResponse(account: account, software: software, externalVersionId: externalVersionId)
+        } catch let error as AppleProtocolError where error.isPasswordTokenExpired {
+            let refreshedAccount = try await refreshAccount(account)
+            return try await downloadProductResponse(
+                account: refreshedAccount,
+                software: software,
+                externalVersionId: externalVersionId
+            )
+        }
+    }
+
+    private static func refreshAccount(_ account: AppleAccount) async throws -> AppleAccount {
+        try await authenticate(AppleAuthenticateRequest(
+            email: account.email,
+            password: account.password,
+            code: nil,
+            existingCookies: account.cookies,
+            deviceIdentifier: account.deviceIdentifier
+        ))
     }
 
     private static func purchaseWithParams(

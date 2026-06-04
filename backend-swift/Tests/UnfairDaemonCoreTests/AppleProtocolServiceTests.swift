@@ -30,4 +30,16 @@ final class AppleProtocolServiceTests: XCTestCase {
         XCTAssertEqual(headers.first { $0.0 == "Content-Type" }?.1, "application/x-apple-plist")
         XCTAssertEqual(headers.first { $0.0 == "Cookie" }?.1, "itspod=25")
     }
+
+    func testPasswordTokenExpiredErrorDetection() {
+        let expiredBy2034 = AppleProtocolError(status: .unauthorized, message: "password token is expired", code: "2034")
+        let expiredBy2042 = AppleProtocolError(status: .unauthorized, message: "password token is expired", code: "2042")
+        let expiredByMessage = AppleProtocolError(status: .unauthorized, message: "password token is expired", code: "5002")
+        let otherError = AppleProtocolError(status: .conflict, message: "purchase failed", code: "5002")
+
+        XCTAssertTrue(expiredBy2034.isPasswordTokenExpired)
+        XCTAssertTrue(expiredBy2042.isPasswordTokenExpired)
+        XCTAssertTrue(expiredByMessage.isPasswordTokenExpired)
+        XCTAssertFalse(otherError.isPasswordTokenExpired)
+    }
 }
